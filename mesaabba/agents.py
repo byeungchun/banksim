@@ -51,8 +51,15 @@ class Loan(Agent):
     interest_payment = None  # amount * rate-quote
     loan_last_color = None  # used to create visual effects
 
-    def __init__(self, unique_id, model):
+    def __init__(self, unique_id, model, amount=1, loan_solvent=True, loan_approved=False, loan_dumped=False,
+                 loan_liquidated=False):
         super().__init__(unique_id, model)
+        self.amount = amount
+        self.loan_solvent = loan_solvent
+        self.loan_approved = loan_approved
+        self.loan_dumped = loan_dumped
+        self.loan_liquidated = loan_liquidated
+
 
 
 class Bank(Agent):
@@ -108,5 +115,27 @@ class Bank(Agent):
     liquidity_failure = None  # liquidity failure
     assets_liabilities = None  # control variable
 
-    def __init(self, unique_id, model):
+    def __init(self, unique_id, model, equity=100, bank_deposits=0, bank_loans=0, bank_reserves=0, rfree=0,
+               bank_solvent=True, defaulted_loans=0, bank_capitalized=True, bank_dividend=0, bank_cum_dividend=0,
+               car=0.08, buffer_reserves_ratio=1.5, credit_failure=False, liquidity_failure=False, ib_credits=0,
+               ib_debits=0):
         super().__init__(unique_id, model)
+        self.equity = equity
+        self.bank_deposits = bank_deposits
+        self.bank_loans = bank_loans
+        self.bank_reserves = bank_reserves
+        self.rdeposits = rfree  # assumes deposits are risk free
+        self.bank_solvent = bank_solvent  # all banks initially solvent
+        self.defaulted_loans = defaulted_loans  # defaulted loans
+        self.bank_capitalized = bank_capitalized  # all banks initially capitalized
+        self.bank_dividend = bank_dividend
+        self.bank_cum_dividend = bank_cum_dividend
+        self.upper_bound_cratio = 1.5 * car  # set upper bound for capital ratio. set it to large number
+        self.buffer_reserves_ratio = buffer_reserves_ratio
+        self.credit_failure = credit_failure
+        self.liquidity_failure = liquidity_failure
+        self.ib_credits = ib_credits
+        self.ib_debits = ib_debits
+
+
+

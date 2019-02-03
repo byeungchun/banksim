@@ -11,16 +11,19 @@ def get_num_agents(model):
 
 
 class MesaAbba(Model):
+    height = None
+    width = None
 
-    height = 20
-    width = 20
+    initial_saver = None
+    initial_ibloan = None
+    initial_loan = None
+    initial_bank = None
 
-    initial_saver = 100
-    initial_ibloan = 10
-    initial_loan = 50
-    initial_bank = 50
+    rfree = None  # risk free rate
+    car = None  # Capital ratio
 
-    def __init__(self, height=20, width=20, initial_saver=100, initial_ibloan=10, initial_loan=50, initial_bank=50):
+    def __init__(self, height=20, width=20, initial_saver=100, initial_ibloan=10, initial_loan=50, initial_bank=50,
+                 rfree=0.01, car=0.08):
         super().__init__()
         self.height = height
         self.width = width
@@ -28,6 +31,11 @@ class MesaAbba(Model):
         self.initial_ibloan = initial_ibloan
         self.initial_loan = initial_loan
         self.initial_bank = initial_bank
+        self.rfree = rfree
+        self.reserve_rates = rfree / 2.0  # set reserve rates one half of risk free rate
+        self.libor_rate = rfree
+        self.bankrupt_liquidation = 1  # 1: it is fire sale of assets, 0: bank liquidates loans at face value
+        self.car = car
 
         self.grid = MultiGrid(self.width, self.height, torus=True)
         self.schedule = RandomActivation(self)
@@ -60,7 +68,7 @@ class MesaAbba(Model):
         for i in range(self.initial_bank):
             x = self.random.randrange(self.width)
             y = self.random.randrange(self.height)
-            bank = Bank(self.next_id(), self)
+            bank = Bank(self.next_id(), self, rfree=self.rfree, car=self.car)
             self.grid.place_agent(bank, (x, y))
             self.schedule.add(bank)
 
