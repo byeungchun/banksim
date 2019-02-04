@@ -1,3 +1,4 @@
+import numpy as np
 from mesa import Agent
 
 
@@ -14,19 +15,27 @@ class Saver(Agent):
     saver_current = None  # old saver/ if false, it is a new entrant to the system
     saver_last_color = None  # used to create visual effects
 
-    def __init__(self, unique_id, model):
+    def __init__(self, unique_id, model, balance=1, owns_account=False, saver_solvent=True, saver_exit=False,
+                 saver_last_color='black'):
         super().__init__(unique_id, model)
+        self.balance = balance
+        self.owns_account = owns_account
+        self.saver_solvent = saver_solvent
+        self.withdraw_prob = np.random.randint(0, 21) / 100.0
+        self.exit_prob = np.random.randint(0, 6) / 100.0
+        self.saver_exit = saver_exit
+        self.saver_last_color = saver_last_color
 
 
 class Ibloan(Agent):
-
     ib_rate = None  # interbank loan rate
     ib_amount = None  # intferbank amount
     ib_last_color = None  # used to create visual effects
 
-    def __init__(self, unique_id, model):
+    def __init__(self, unique_id, model,libor_rate=0.01):
         super().__init__(unique_id, model)
-
+        self.ib_rate = libor_rate
+        self.ib_amount = 0
 
 
 class Loan(Agent):
@@ -52,14 +61,23 @@ class Loan(Agent):
     loan_last_color = None  # used to create visual effects
 
     def __init__(self, unique_id, model, amount=1, loan_solvent=True, loan_approved=False, loan_dumped=False,
-                 loan_liquidated=False):
+                 loan_liquidated=False,rcvry_rate=0.06, rfree=0):
         super().__init__(unique_id, model)
         self.amount = amount
         self.loan_solvent = loan_solvent
         self.loan_approved = loan_approved
         self.loan_dumped = loan_dumped
         self.loan_liquidated = loan_liquidated
-
+        self.pdef = (np.random.randint(0, 10) + 1) / 100
+        self.rweight = 0.5 + (self.pdef * 5.0)
+        self.rcvry_rate = rcvry_rate
+        self.rate_quote = (((1+rfree) - (self.rcvry_rate * self.pdef)) / (1-self.pdef) -1) * 1.2
+        self.lgdamount = (1-self.rcvry_rate) * self.amount
+        self.loan_recovery = self.rcvry_rate * self.amount
+        self.loan_plus_rate = (1+self.rate_quote) * self.amount
+        self.interest_payment = self.rate_quote * self.amount
+        self.rwamount = self.rweight * self.amount
+        self.fire_sale_loss = np.random.randint(0, 11) / 100
 
 
 class Bank(Agent):
@@ -115,7 +133,7 @@ class Bank(Agent):
     liquidity_failure = None  # liquidity failure
     assets_liabilities = None  # control variable
 
-    def __init(self, unique_id, model, equity=100, bank_deposits=0, bank_loans=0, bank_reserves=0, rfree=0,
+    def __init__(self, unique_id, model, equity=100, bank_deposits=0, bank_loans=0, bank_reserves=0, rfree=0,
                bank_solvent=True, defaulted_loans=0, bank_capitalized=True, bank_dividend=0, bank_cum_dividend=0,
                car=0.08, buffer_reserves_ratio=1.5, credit_failure=False, liquidity_failure=False, ib_credits=0,
                ib_debits=0):
@@ -136,6 +154,9 @@ class Bank(Agent):
         self.liquidity_failure = liquidity_failure
         self.ib_credits = ib_credits
         self.ib_debits = ib_debits
+
+    def step(self):
+        print('Bank step')
 
 
 
