@@ -6,6 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/examples/bank_reserves" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/examples/Schelling" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/examples/wolf_sheep" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/boltzmann_wealth_model_network" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
