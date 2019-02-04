@@ -21,6 +21,7 @@ class MesaAbba(Model):
 
     rfree = None  # risk free rate
     car = None  # Capital ratio
+    libor_rate = None
 
     def __init__(self, height=20, width=20, initial_saver=100, initial_ibloan=10, initial_loan=50, initial_bank=50,
                  rfree=0.01, car=0.08):
@@ -54,14 +55,14 @@ class MesaAbba(Model):
         for i in range(self.initial_ibloan):
             x = self.random.randrange(self.width)
             y = self.random.randrange(self.height)
-            ibloan = Ibloan(self.next_id(), self)
+            ibloan = Ibloan(self.next_id(), self,libor_rate=self.libor_rate)
             self.grid.place_agent(ibloan, (x, y))
             self.schedule.add(ibloan)
 
         for i in range(self.initial_loan):
             x = self.random.randrange(self.width)
             y = self.random.randrange(self.height)
-            loan = Loan(self.next_id(), self)
+            loan = Loan(self.next_id(), self, rfree=self.rfree)
             self.grid.place_agent(loan, (x, y))
             self.schedule.add(loan)
 
