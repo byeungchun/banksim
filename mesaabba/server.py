@@ -8,11 +8,11 @@ from mesaabba.model import MesaAbba
 def mesa_abba_network_portrayal(G):
     portrayal = dict()
     portrayal['nodes'] = [{'id': node_id,
-                           'size': 3 if agents else 1,
+                           'size': 3,
                            'color': '#CC0000',
-                           'label': None if not agents else 'Agent:{}'.format(agents[0].unique_id),
+                           'label': 'Agent:{}'.format(node_id),
                            }
-                          for (node_id, agents) in G.nodes.data('agent')]
+                          for node_id in G.node]
 
     portrayal['edges'] = [{'id': edge_id,
                            'source': source,
