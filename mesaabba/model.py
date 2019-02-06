@@ -178,7 +178,7 @@ class MesaAbba(Model):
         solvent_bank.capital_ratio = 0
         # TO DO: change colour to red
 
-
+    # Evaluate solvency of banks after loans experience default
     def main_evaluate_solvency(self):
         for solvent_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]:
             self.calculate_credit_loss_loan_book(solvent_bank)
@@ -195,6 +195,35 @@ class MesaAbba(Model):
                 solvent_bank.credit_failure = True
                 # Change color to Red
                 self.process_unwind_loans_insolvent_bank(solvent_bank)
+
+            else:
+                if solvent_bank.capital_ratio < self.car and solvent_bank.capital_ratio > 0:
+                    solvent_bank.bank_capitalized = False
+                    solvent_bank.bank_solvent = True
+                    # TO DO: change colour to Cyan
+
+                elif solvent_bank.capital_ratio > self.car:
+                    solvent_bank.bank_capitalized = True
+                    solvent_bank.bank_solvent = True
+                    # TO DO: change colour to Green
+
+                solvent_bank.capital_ratio = solvent_bank.equity / solvent_bank.rwassets
+                solvent_bank.reserves_ratio = solvent_bank.bank_reserves / solvent_bank.bank_deposits
+                solvent_bank.total_assets = solvent_bank.bank_loans + solvent_bank.bank_reserves
+                solvent_bank.leverage_ratio = solvent_bank.equity / solvent_bank.total_assets
+
+    def calculate_interbabnk_credit_loss(self, solvent_bank):
+        print('editing')
+
+    # evaluate second round effects owing to cross-bank linkages
+    # only interbank loans to cover shortages in reserves requirements are included
+    def main_second_round_effects(self):
+        solvent_banks = [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]
+        insolvent_banks = [x for x in self.schedule.agents if isinstance(x, Bank) and not x.bank_solvent]
+        solvent_banks_afterwards = list()
+        while len(set(solvent_banks).intersection(solvent_banks_afterwards)) != len(solvent_banks):
+            for solvent_bank in solvent_banks:
+                self.calculate_interbabnk_credit_loss(solvent_bank)
 
 
 
