@@ -31,6 +31,8 @@ class Ibloan(Agent):
     ib_rate = None  # interbank loan rate
     ib_amount = None  # intferbank amount
     ib_last_color = None  # used to create visual effects
+    ib_creditor = None
+    ib_debtor = None
 
     def __init__(self, unique_id, model,libor_rate=0.01):
         super().__init__(unique_id, model)
@@ -155,8 +157,25 @@ class Bank(Agent):
         self.ib_credits = ib_credits
         self.ib_debits = ib_debits
 
+    def calculate_total_assets(self):
+        self.total_assets = self.bank_reserves + self.bank_loans
+
+    def calculate_leverage_ratio(self):
+        self.leverage_ratio = self.equity / self.total_assets
+
+    def calculate_capital_ratio(self):
+        self.capital_ratio = self.equity / self.rwassets
+
+    def calculate_reserve_ratio(self):
+        self.reserves_ratio = self.bank_reserves / self.bank_deposits
+
+    def initialize_ib_variables(self):
+        self.ib_credits = 0
+        self.ib_debits = 0
+        self.ib_interest_income = 0
+        self.ib_interest_expense = 0
+        self.ib_net_interest_income = 0
+        self.ib_credit_loss = 0
+
     def step(self):
         print('Bank step')
-
-
-
