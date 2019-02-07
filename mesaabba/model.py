@@ -212,8 +212,22 @@ class MesaAbba(Model):
                 solvent_bank.total_assets = solvent_bank.bank_loans + solvent_bank.bank_reserves
                 solvent_bank.leverage_ratio = solvent_bank.equity / solvent_bank.total_assets
 
-    def calculate_interbabnk_credit_loss(self, solvent_bank):
-        print('editing')
+    def calculate_interbank_credit_loss(self, solvent_bank):
+        solvent_bank.ib_credit_loss = sum([x.ib_amount for x in self.schedule.agents if isinstance(x,Ibloan) and
+                                           x.ib_creditor == solvent_bank and not x.ib_debtor.bank_solvent])
+
+    def calculate_interbank_interest_income(self, solvent_bank):
+        # QUESTION: in netlogo script, it is (1 + x.ib_rate). But it looks wrong because it is interest income
+        solvent_bank.ib_interest_income = sum([x.ib_amount * x.ib_rate for x in self.schedule.agents if isinstance(x,Ibloan) and
+                                           x.ib_creditor == solvent_bank and x.ib_debtor.bank_solvent])
+
+    def calculate_interbank_interest_expense(self, solvent_bank):
+        # QUESTION: in netlogo script, it is (1 + x.ib_rate). But it looks wrong because it is interest income
+        solvent_bank.ib_interest_expense = sum([x.ib_amount * x.ib_rate for x in self.schedule.agents if isinstance(x, Ibloan) and
+                                                x.ib_debtor == solvent_bank])
+
+    def calculate_interbank_net_interest_expense(self, solvent_bank):
+        solvent_bank.ib_net_interest_income = solvent_bank.ib_interest_income - solvent_bank.ib_interest_expense
 
     # evaluate second round effects owing to cross-bank linkages
     # only interbank loans to cover shortages in reserves requirements are included
@@ -223,8 +237,65 @@ class MesaAbba(Model):
         solvent_banks_afterwards = list()
         while len(set(solvent_banks).intersection(solvent_banks_afterwards)) != len(solvent_banks):
             for solvent_bank in solvent_banks:
-                self.calculate_interbabnk_credit_loss(solvent_bank)
+                self.calculate_interbank_credit_loss(solvent_bank)
+                self.calculate_interbank_interest_income(solvent_bank)
+                self.calculate_interbank_interest_expense(solvent_bank)
+                self.calculate_interbank_net_interest_income(solvent_bank)
 
+                if solvent_bank.ib_net_interest_income > 0:
+                    my_ibloans = [x for x in self.schedule.agents if
+                                  isinstance(x, Ibloan) and x.ib_creditor == solvent_bank]
+                    principal_only = [x.ib_amount for x in my_ibloans]
+                    interest_only = [x.ib_amount * x.ib_rate for x in my_ibloans]
+                    solvent_bank.equity = solvent_bank.equity + interest_only - solvent_bank.ib_credit_loss
+                    solvent_bank.bank_reserves = solvent_bank.bank_reserves + principal_only + interest_only - \
+                                                 solvent_bank.ib_credit_loss
+                else:
+                    my_ibloans = [x for x in self.schedule.agents if
+                                  isinstance(x, Ibloan) and x.ib_debtor == solvent_bank]
+                    principal_only = [x.ib_amount for x in my_ibloans]
+                    interest_only = [x.ib_amount * x.ib_rate for x in my_ibloans]
+                    solvent_bank.equity = solvent_bank.equity - interest_only
+                    solvent_bank.bank_reserves = solvent_bank.bank_reserves - principal_only - interest_only
+
+                solvent_bank.calculate_total_assets()
+                solvent_bank.calculate_leverage_ratio()
+                solvent_bank.calculate_capital_ratio()
+                solvent_bank.calculate_reserve_ratio()
+
+                if solvent_bank.equity < 0 or solvent_bank.bank_reserves < 0:
+                    solvent_bank.bank_solvent = False
+                    solvent_bank.bank_capitalized = False
+                    # TO DO: change colour to RED
+                    self.process_unwind_loans_insolvent_bank(solvent_bank)
+
+                if self.car > solvent_bank.capital_ratio > 0:
+                    solvent_bank.bank_capitalized = False
+                    solvent_bank.bank_solvent = True
+                    # TO DO: change colour to Cyan
+                    solvent_bank.calculate_total_assets()
+                    solvent_bank.calculate_leverage_ratio()
+                    solvent_bank.calculate_capital_ratio()
+                    solvent_bank.calculate_reserve_ratio()
+
+                if solvent_bank.capital_ratio > self.car:
+                    solvent_bank.bank_capitalized = True
+                    solvent_bank.bank_solvent = True
+                    # TO DO: change colour to Green
+                    solvent_bank.calculate_total_assets()
+                    solvent_bank.calculate_leverage_ratio()
+                    solvent_bank.calculate_capital_ratio()
+                    solvent_bank.calculate_reserve_ratio()
+
+            solvent_banks_afterwards = [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]
+            if len(solvent_banks) != len(set(solvent_banks_afterwards).intersection(solvent_banks)):
+                solvent_banks = solvent_banks_afterwards
+
+        for bank in [x for x in self.schedule.agents if isinstance(x, Bank)]:
+            bank.initialize_ib_variables()
+
+        for ibloan in [x for x in self.schedule.agents if isinstance(x, Ibloan)]:
+            self.schedule.remove(ibloan)
 
 
     def __init__(self, height=20, width=20, initial_saver=10000, initial_ibloan=10, initial_loan=50, initial_bank=10,
@@ -243,7 +314,8 @@ class MesaAbba(Model):
         self.car = car
         self.min_reserves_ratio = min_reserves_ratio
 
-        self.G = nx.complete_graph(self.initial_bank)
+        #self.G = nx.complete_graph(self.initial_bank)
+        self.G = nx.empty_graph(self.initial_bank)
         self.grid = NetworkGrid(self.G)
         self.schedule = RandomActivation(self)
         self.datacollector = DataCollector({
@@ -262,7 +334,7 @@ class MesaAbba(Model):
             self.schedule.add(saver)
 
         for i in range(self.initial_ibloan):
-            ibloan = Ibloan(self.next_id(), self,libor_rate=self.libor_rate)
+            ibloan = Ibloan(self.next_id(), self, libor_rate=self.libor_rate)
             self.schedule.add(ibloan)
 
         for i in range(self.initial_loan):
