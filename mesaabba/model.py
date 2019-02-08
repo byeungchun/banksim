@@ -365,9 +365,18 @@ class MesaAbba(Model):
                 # TO DO: colour Green
                 uncap_bank.bank_capitalized = True
 
-            savers_with_insolvent_bank = [x for x in self.schedule.agents if isinstance(x, Saver) and
-                                          x.pos == uncap_bank.pos and x.owns_account]
-            print(";; dumped savers are WHITE")
+            savers_in_bank = [x for x in self.schedule.agents if isinstance(x, Saver) and
+                              x.pos == uncap_bank.pos and x.owns_account]
+            if n_dumped_loans < len(savers_in_bank):
+                for saver in random.sample(savers_in_bank, n_dumped_loans):
+                    saver.own_account = False
+                    # TO DO: colour White
+            else:
+                for saver in savers_in_bank:
+                    saver.owns_account = False
+                    # TO DO: colour White
+                uncap_bank.equity = uncap_bank.equity - (n_dumped_loans - len(savers_in_bank))
+            uncap_bank.bank_deposits = sum([x.balance for x in savers_in_bank])
 
     def __init__(self, height=20, width=20, initial_saver=10000, initial_ibloan=10, initial_loan=50, initial_bank=10,
                  rfree=0.01, car=0.08, min_reserves_ratio = 0.03):
