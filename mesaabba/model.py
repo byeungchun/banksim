@@ -386,65 +386,64 @@ class MesaAbba(Model):
     def main_pay_dividends(self):
         for cap_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.capital_ratio > self.car]:
             if cap_bank.capital_ratio >= cap_bank.upper_bound_cratio:
-        # reduce excess capital
-        # first by drawing reserves down to the floor
-        # afterwards, by deleveraging
+                # reduce excess capital
+                # first by drawing reserves down to the floor
+                # afterwards, by deleveraging
+                target_capital = cap_bank.upper_bound_cratio * cap_bank.rwassets
+                excess_capital = cap_bank.equity - target_capital
+                reserves_floor = cap_bank.min_reserves_ratio * cap_bank.bank_deposits * cap_bank.buffer_reserves_ratio
+                excess_reserves = cap_bank.bank_reserves - reserves_floor
 
-        target_capital = cap_bank.upper_bound_cratio * cap_bank.rwassets
-        excess_capital = cap_bank.equity - target_capital
-        reserves_floor = cap_bank.min_reserves_ratio * cap_bank.bank_deposits * cap_bank.buffer_reserves_ratio
-        excess_reserves = cap_bank.bank_reserves - reserves_floor
+                if excess_capital < excess_reserves:
+                    cap_bank.bank_reserves = cap_bank.bank_reserves - excess_capital
+                    cap_bank.bank_dividend = cap_bank.equity - target_capital
+                    cap_bank.bank_cum_dividend = cap_bank.bank_cum_dividend + cap_bank.bank_dividend
+                    cap_bank.equity = target_capital
+                    cap_bank.capital_ratio = cap_bank.equity / cap_bank.rwassets
+                    cap_bank.total_assets = cap_bank.bank_reserves + cap_bank.bank_loans
+                    cap_bank.leverage_ratio = cap_bank.equity / cap_bank.total_assets
+                else:
+                    cap_bank.bank_reserves = reserves_floor
 
-        if excess_capital < excess_reserves:
-            cap_bank.bank_reserves = cap_bank.bank_reserves - excess_capital
-            cap_bank.bank_dividend = cap_bank.equity - target_capital
-            cap_bank.bank_cum_dividend = cap_bank.bank_cum_dividend + cap_bank.bank_dividend
-            cap_bank.equity = target_capital
-            cap_bank.capital_ratio = cap_bank.equity / cap_bank.rwassets
-            cap_bank.total_assets = cap_bank.bank_reserves + cap_bank.bank_loans
-            cap_bank.leverage_ratio = cap_bank.equity / cap_bank.total_assets
-        else:
-            cap_bank.bank_reserves = reserves_floor
+                    # let excess_loans excess_capital _ excess_reserves
+                    interim_equity = cap_bank.equity - excess_reserves
 
-            # let excess_loans excess_capital _ excess_reserves
-            interim_equity = cap_bank.equity - excess_reserves
+                    # let interim-equity equity  :: this is the original line in the program
+                    interim_rwassets = cap_bank.rwassets
+                    interim_reserves = cap_bank.bank_reserves
+                    interim_deposits = cap_bank.bank_deposits
+                    interim_capital_ratio = interim_equity / interim_rwassets
 
-            # let interim-equity equity  :: this is the original line in the program
-            interim_rwassets = cap_bank.rwassets
-            interim_reserves = cap_bank.bank_reserves
-            interim_deposits = cap_bank.bank_deposits
-            interim_capital_ratio = interim_equity / interim_rwassets
+                    # let interim-capital-ratio  capital-ratio  :: original line in the progrma
+                    interim_reserve_ratio = cap_bank.bank_reserves / cap_bank.bank_deposits
 
-            # let interim-capital-ratio  capital-ratio  :: original line in the progrma
-            interim_reserve_ratio = cap_bank.bank_reserves / cap_bank.bank_deposits
+                    # let interim-reserve-ratio reserves-ratio
+                    interim_loans = cap_bank.bank_loans
 
-            # let interim-reserve-ratio reserves-ratio
-            interim_loans = cap_bank.bank_loans
+                    for loan in [x for x in self.schedule.agents if isinstance(x, Loan) and x.loan_approved and x.loan_solvent]:
+                        loan_discount = 0  # no fire_sale of assets when paying dividends, bank is not distressed
+                        loan_equity = interim_equity - loan.amount * loan_discount
+                        loan_rwassets = interim_rwassets - loan.rwamount
+                        loan_capital_ratio = loan_equity / loan_rwassets
+                        loan_total_balance = interim_loans - loan.amount
 
-            for loan in [x for x in self.schedule.agents if isinstance(x, Loan) and x.loan_approved and x.loan_solvent]:
-                loan_discount = 0  # no fire_sale of assets when paying dividends, bank is not distressed
-                loan_equity = interim_equity - loan.amount * loan_discount
-                loan_rwassets = interim_rwassets - loan.rwamount
-                loan_capital_ratio = loan_equity / loan_rwassets
-                loan_total_balance = interim_loans - loan.amount
+                        if cap_bank.upper_bound_cratio <= loan_capital_ratio < interim_capital_ratio and loan_equity > 0 and loan_rwassets > 0:
+                            interim_equity = loan_equity
+                            interim_rwassets = loan_rwassets
+                            interim_capital_ratio = loan_capital_ratio
+                            interim_loans = loan_total_balance
+                            loan.loan_dumped = True
+                            loan.loan_approved = False
+                            # TO DO: change color 86  ; light blue
 
-                if cap_bank.upper_bound_cratio <= loan_capital_ratio < interim_capital_ratio and loan_equity > 0 and loan_rwassets > 0:
-                    interim_equity = loan_equity
-                    interim_rwassets = loan_rwassets
-                    interim_capital_ratio = loan_capital_ratio
-                    interim_loans = loan_total_balance
-                    loan.loan_dumped = True
-                    loan.loan_approved = False
-                    # TO DO: change color 86  ; light blue
-
-            cap_bank.bank_dividend = cap_bank.equity - interim_equity
-            cap_bank.bank_cum_dividend = cap_bank.bank_cum_dividend + cap_bank.bank_dividend
-            cap_bank.equity = interim_equity
-            cap_bank.rwassets = interim_rwassets
-            cap_bank.capital_ratio = cap_bank.equity / cap_bank.rwassets
-            cap_bank.bank_reserves = cap_bank.bank_reserves - cap_bank.bank_dividend
-            cap_bank.total_assets = cap_bank.bank_reserves + cap_bank.bank_loans
-            cap_bank.leverage_ratio = cap_bank.equity / cap_bank.total_assets
+                    cap_bank.bank_dividend = cap_bank.equity - interim_equity
+                    cap_bank.bank_cum_dividend = cap_bank.bank_cum_dividend + cap_bank.bank_dividend
+                    cap_bank.equity = interim_equity
+                    cap_bank.rwassets = interim_rwassets
+                    cap_bank.capital_ratio = cap_bank.equity / cap_bank.rwassets
+                    cap_bank.bank_reserves = cap_bank.bank_reserves - cap_bank.bank_dividend
+                    cap_bank.total_assets = cap_bank.bank_reserves + cap_bank.bank_loans
+                    cap_bank.leverage_ratio = cap_bank.equity / cap_bank.total_assets
 
     def main_reset_insolvent_loans(self):
         for loan in [x for x in self.schedule.agents if isinstance(x, Loan) and x.loan_approved and not x.loan_solvent]:
@@ -543,7 +542,57 @@ class MesaAbba(Model):
             # assets=liabilities? (equity + bank-deposits + IB-debits) - (bank-loans + bank-reserves + IB-credits)
     
     def process_deposit_withdrawal(self):
+        # savers withdraw funds from solvent banks
+        # banks that are insolvent have already liquidated their loan portfolio and
+        # returned their deposits to savers
+        for solvent_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]:
+            for saver in [x for x in self.schedule.agents if isinstance(x, Saver) and x.pos == solvent_bank.pos and
+                                                             x.owns_account]:
+                if random.random() < saver.withdraw_prob:
+                    saver.bank_id = 9999
+                    saver.owns_account = False
+                    # TO DO: saver.saver_last_color = color
+                    # TO DO: change color Red
+                solvent_bank.deposit_outflow = sum([x.balance for x in self.schedule.agents if isinstance(x, Saver) and
+                                                    x.pos == solvent_bank.pos and x.bank_id == 9999])
 
+    def process_deposit_reassignment(self):
+        cap_bankpos = [x.pos for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent and x.bank_capitalized]
+        savers = [x for x in self.schedule.agents if isinstance(x, Saver) and x.bank_id == 9999]
+        for saver in savers:
+            bankpos = random.choice(cap_bankpos)
+            saver.bank_id = bankpos
+            saver.owns_account = True
+            # TO DO: saver.saver_last_color = color
+
+        for solvent_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]:
+            solvent_bank.deposit_inflow = sum([x.balance for x in savers and x.pos == solvent_bank.pos and x.owns_account == True])
+            solvent_bank.net_deposit_flow = solvent_bank.deposit_inflow - solvent_bank.deposit_outflow
+
+    def process_deposit_flow_rebalancing(self):
+        for solvent_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]:
+            solvent_bank.calculate_bank_deposits()
+            solvent_bank.calculate_reserve()
+            solvent_bank.calculate_reserve_ratio()
+            solvent_bank.calculate_total_assets()
+            solvent_bank.deposit_inflow = 0
+            solvent_bank.deposit_outflow = 0
+            solvent_bank.net_deposit_flow = 0
+
+    def process_evaluate_liquidity_needs(self):
+        for solvent_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]:
+            solvent_bank.calculate_reserve_ratio()
+        liq_cap_banks = [x for x in self.schedule.agents if isinstance(x, Bank) and x.capital_ratio > self.car and
+                         x.reserves_ratio > self.min_reserves_ratio]
+        for bankrun_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.reserves_ratio < 0]:
+            self.process_unwind_loans_insolvent_bank(bankrun_bank)
+            # TO DO: change color Brown
+            bankrun_bank.liquidity_failure = True
+
+        for noliqcap_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and
+                              x.reserves_ratio < self.min_reserves_ratio and x.capital_ratio >= self.car]:
+            # TO DO: change color Yellow
+            self.process-access-interbank-market bank-number
 
     def main_evaluate_liquidity(self):
    
