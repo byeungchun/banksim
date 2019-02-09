@@ -464,8 +464,37 @@ class MesaAbba(Model):
             interim_loans = solvent_bank.bank_loans
             interim_provisions = solvent_bank.bank_provisions
 
-            for avail_
+            for avail_loan in [x for x in self.schedule.agents if isinstance(x, Loan) and x.pos == solvent_bank.pos and
+                                not x.loan_approved and x.loan_solvent]:
 
+                interim_capital_ratio = (interim_equity - avail_loan.pdef * avail_loan.lgdamount) / \
+                                        (interim_rwa + avail_loan.rwamount)
+                interim_reserve_ratio = (interim_reserves - avail_loan.pdef * avail_loan.lgdamount - avail_loan.amount) / \
+                                        interim_deposits
+                if interim_capital_ratio > self.car and interim_reserve_ratio > self.min_reserves_ratio:
+                    interim_rwa = interim_rwa + avail_loan.rwamount
+                    interim_equity = interim_equity - avail_loan.pdef * avail_loan.lgdamount
+                    interim_reserves = interim_reserves - avail_loan.amount - avail_loan.pdef * avail_loan.lgdamount
+                    interim_loans = interim_loans + avail_loan.amount
+                    interim_provisions = interim_provisions + avail_loan.pdef * avail_loan.lgdamount
+                    avail_loan.loan_approved = True
+                    # TO DO: change color yellow
+            solvent_bank.rwassets = interim_rwa
+            solvent_bank.bank_reserves = interim_reserves
+            solvent_bank.bank_loans = interim_loans
+            solvent_bank.equity = interim_equity
+            solvent_bank.bank_provisions = interim_provisions
+            solvent_bank.total_assets = solvent_bank.bank_reserves + solvent_bank.bank_loans
+
+            # ratio has to be calculated since the last calculation in the available_loans loop
+            # reports the first instance of the capital ratio that does not meet the CAR
+
+            solvent_bank.capital_ratio = interim_equity / interim_rwa
+            solvent_bank.reserves_ratio = solvent_bank.bank_reserves / solvent_bank.bank_deposits
+            solvent_bank.total_assets = solvent_bank.bank_reserves + solvent_bank.bank_loans
+            solvent_bank.leverage_ratio = solvent_bank.equity / solvent_bank.total_assets
+
+            # assets=liabilities? (equity + bank-deposits + IB-debits) - (bank-loans + bank-reserves + IB-credits)
     def main_build_loan_book_globally(self):
         solvent_banks = [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_capitalized]
         weak_banks = [x for x in self.schedule.agents if isinstance(x, Bank) and
@@ -512,6 +541,39 @@ class MesaAbba(Model):
             solvent_bank.leverage_ratio = solvent_bank.equity / solvent_bank.total_assets
 
             # assets=liabilities? (equity + bank-deposits + IB-debits) - (bank-loans + bank-reserves + IB-credits)
+    
+    def process_deposit_withdrawal(self):
+
+
+    def main_evaluate_liquidity(self):
+   
+        # the four procedures will cause some banks to have:
+        #
+        # excess reserves: bank-reserves > minimum-reserves
+        # excess reserve deficit, reserves > 0
+        #   borrow from banks with excess reserve surplus (if solvent and capitalized)
+        #   reserve optimization if not capitalized
+        # excess reserve deficit, reserves < 0
+        #   bank facing liquidity run - cannot borrow from other banks
+        #   reserve optimization - sell loans to build up reserves
+        #
+        #
+        #
+        # the deposit-<> procedures simulate the following shocks:
+        #
+        #   process-deposit-withdrawal: a number of savers close their accounts
+        #   process-deposit-reassignment: and open accounts with other banks
+        #     both process-deposit-withdrawal and -reassignment are liquidity-neutral
+        #     system-wide
+        #   process-deposit-flow-rebalancing: all bank-deposits and bank-reserves are
+        #     adjusted to reflect the movement in reserves
+
+
+        self.process_deposit_withdrawal()
+        self.process_deposit_reassignment()
+        self.process_deposit_flow_rebalancing()
+        self.process_evaluate_liquidity_needs()
+
 
     def __init__(self, height=20, width=20, initial_saver=10000, initial_ibloan=10, initial_loan=50, initial_bank=10,
                  rfree=0.01, car=0.08, min_reserves_ratio=0.03):
