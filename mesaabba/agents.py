@@ -169,6 +169,12 @@ class Bank(Agent):
     def calculate_reserve_ratio(self):
         self.reserves_ratio = self.bank_reserves / self.bank_deposits
 
+    def calculate_reserve(self):
+        self.bank_reserves = self.bank_reserves + self.net_deposit_flow
+
+    def calculate_bank_deposits(self):
+        self.bank_deposits = self.bank_deposits + self.net_deposit_flow
+
     def initialize_ib_variables(self):
         self.ib_credits = 0
         self.ib_debits = 0
