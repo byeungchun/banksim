@@ -62,7 +62,7 @@ class MesaAbba(Model):
             bank.rwassets = rwa
             bank.bank_reserves = bank.bank_deposits + bank.equity - bank.bank_loans
             bank.reserves_ratio = bank.bank_reserves / bank.bank_deposits
-            bank.capital_ratio = bank.equity / bank.rwassets
+            bank.capital_ratio = bank.equity / bank.rwassets if bank.rwassets > 0 else 0
             bank.bank_provisions = sum([x.pdef * x.lgdamount for x in self.schedule.agents if isinstance(x, Loan) and
                                         bank.pos == x.pos and x.loan_approved and x.loan_solvent])
             bank.bank_solvent = True
@@ -579,6 +579,41 @@ class MesaAbba(Model):
             solvent_bank.deposit_outflow = 0
             solvent_bank.net_deposit_flow = 0
 
+    def process_access_interbank_market(self, bank):
+        liq_banks = [x for x in self.schedule.agents if isinstance(x, Bank) and x.capital_ratio >= self.car and
+                     x.reserves_ratio > x.buffer_reserves_ratio * self.min_reserves_ratio]
+        for liq_bank in liq_banks:
+            print('Remove this print after implementing below to do')
+            # TO DO: change colour to Green
+        current_reserves = bank.bank_reserves
+        needed_reserves = self.min_reserves_ratio * bank.bank_deposits - bank.bank_reserves
+        # TO DO: change colour to Yellow
+        available_reserves = sum([x.bank_reserves - x.buffer_reserves_ratio * self.min_reserves_ratio * x.bank_deposits
+                                  for x in liq_banks])
+
+        ib_request = needed_reserves if needed_reserves < available_reserves else available_reserves
+        for liq_bank in liq_banks:
+            excess_reserve = liq_bank.bank_reserves - liq_bank.buffer_reserves_ratio * self.min_reserves_ratio * \
+                             liq_bank.bank_deposits
+            liquidity_contribution = excess_reserve * ib_request / available_reserves
+            liq_bank.bank_reserves = liq_bank.bank_reserves - liquidity_contribution
+            liq_bank.ib_credits = liq_bank.ib_credits + liquidity_contribution
+            liq_bank.reserves_ratio = liq_bank.bank_reserves / liq_bank.bank_deposits
+
+            ibloan = Ibloan(self.next_id(), self, self.libor_rate)
+            ibloan.ib_creditor = liq_bank
+            ibloan.ib_amount = liquidity_contribution
+            # TO DO: change color Red
+            # TO DO: set line to thickness 3
+
+        bank.ib_debits = ib_request
+        bank.bank_reserves = bank.bank_reserves + bank.ib_debits
+        bank.reserves_ratio = bank.bank_reserves / bank.bank_deposits
+        bank.total_assets = bank.bank_reserves + bank.bank_loans
+
+        # TO DO: set assets=liabilities? (equity + bank-deposits + IB-debits) - (bank-loans + bank-reserves + IB-credits)
+
+
     def process_evaluate_liquidity_needs(self):
         for solvent_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]:
             solvent_bank.calculate_reserve_ratio()
@@ -592,7 +627,17 @@ class MesaAbba(Model):
         for noliqcap_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and
                               x.reserves_ratio < self.min_reserves_ratio and x.capital_ratio >= self.car]:
             # TO DO: change color Yellow
-            self.process-access-interbank-market bank-number
+            self.process_access_interbank_market(noliqcap_bank)
+
+        # Recalculate the number of banks experiencing shortages of reserves
+        # it could be the case that some banks attempting to find resources were not
+        # able to find all the resources they needed
+
+        for noliqcap_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent and
+                              0 < x.reserves_ratio < self.min_reserves_ratio and not x.bank_capitalized]:
+            print('Remove this print after implementing below to do')
+            # TO DO: change colour to Yellow
+
 
     def main_evaluate_liquidity(self):
    
@@ -659,22 +704,55 @@ class MesaAbba(Model):
             self.grid.place_agent(saver, i % 10)
             self.schedule.add(saver)
 
-        for i in range(self.initial_ibloan):
-            ibloan = Ibloan(self.next_id(), self, libor_rate=self.libor_rate)
-            self.schedule.add(ibloan)
+        #for i in range(self.initial_ibloan):
+        #    ibloan = Ibloan(self.next_id(), self, libor_rate=self.libor_rate)
+        #    self.schedule.add(ibloan)
 
         for i in range(self.initial_loan):
             loan = Loan(self.next_id(), self, rfree=self.rfree)
             self.grid.place_agent(loan, i % 10)
             self.schedule.add(loan)
 
+        self.initialize_deposit_base()
+        self.initialize_loan_book()
+
         self.running = True
         self.datacollector.collect(self)
 
     def step(self):
+
+        # evaluate solvency of banks after loans experience default
+        self.main_evaluate_solvency()
+
+        # evaluate second round effects owing to cross_bank linkages
+        # only interbank loans to cover shortages in reserves requirements are included
+        self.main_second_round_effects()
+
+        # Undercapitalized banks undertake risk_weight optimization
+        self.main_risk_weight_optimization()
+
+        # banks that are well capitalized pay dividends
+        self.main_pay_dividends()
+
+        # Reset insolvent loans, i.e. rebirth lending opportunity
+        self.main_reset_insolvent_loans()
+
+        # Build up loan book with loans available in bank neighborhood
+        self.main_build_loan_book_locally()
+
+        # Build up loan book with loans available in other neighborhoods
+        self.main_build_loan_book_globally()
+
+        # main_raise_deposits_build_loan_book
+        # Evaluate liquidity needs related to reserves requirements
+        self.main_evaluate_liquidity()
+
         self.schedule.step()
         self.datacollector.collect(self)
 
     def run_model(self, step_count=200):
         for i in range(step_count):
             self.step()
+            if len([x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]) == 0:
+                break
+
