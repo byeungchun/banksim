@@ -125,8 +125,8 @@ class Bank(Agent):
     buffer_reserves_ratio = None  # desired buffer or markup over
     # minimum_reserves_ratio
     # random changes to deposit levels
-    deposit_outflow = None  # deposit withdrawal shock
-    deposit_inflow = None  # deposit inflow from other banks
+    deposit_outflow = 0  # deposit withdrawal shock
+    deposit_inflow = 0  # deposit inflow from other banks
     net_deposit_flow = None  # net deposit flow
     bank_solvent = None  # bank solvent
     bank_capitalized = None  # bank capitalized
@@ -161,13 +161,13 @@ class Bank(Agent):
         self.total_assets = self.bank_reserves + self.bank_loans
 
     def calculate_leverage_ratio(self):
-        self.leverage_ratio = self.equity / self.total_assets
+        self.leverage_ratio = self.equity / self.total_assets if self.total_assets !=0 else 0
 
     def calculate_capital_ratio(self):
-        self.capital_ratio = self.equity / self.rwassets
+        self.capital_ratio = self.equity / self.rwassets if self.rwassets !=0 else 0
 
     def calculate_reserve_ratio(self):
-        self.reserves_ratio = self.bank_reserves / self.bank_deposits
+        self.reserves_ratio = self.bank_reserves / self.bank_deposits if self.bank_deposits !=0 else 0
 
     def calculate_reserve(self):
         self.bank_reserves = self.bank_reserves + self.net_deposit_flow
