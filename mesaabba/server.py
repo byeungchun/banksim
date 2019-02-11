@@ -28,7 +28,7 @@ canvas_network = NetworkModule(mesa_abba_network_portrayal, 500, 500, library='s
 chart_element = ChartModule([{"Label":"Saver","Color":"#AA0000"},
                              {"Label":"Bank", "Color": "#666666"}])
 
-model_params = {"initial_saver": UserSettableParameter("slider", "Initial Saver", 100, 1, 200)}
+model_params = {"initial_saver": UserSettableParameter("slider", "Initial Saver", 10000, 1, 20000)}
 
 server = ModularServer(MesaAbba, [canvas_network, chart_element], "Mesa ABBA model", model_params)
 server.port = 8521
