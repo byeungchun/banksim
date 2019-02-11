@@ -6,6 +6,7 @@ from mesa.datacollection import DataCollector
 import random
 import numpy as np
 import networkx as nx
+import pandas as pd
 
 from mesaabba.agents import Saver, Ibloan, Loan, Bank
 
@@ -19,7 +20,7 @@ class MesaAbba(Model):
     width = None
 
     initial_saver = None
-    #initial_ibloan = None
+    # initial_ibloan = None
     initial_loan = None
     initial_bank = None
 
@@ -28,16 +29,17 @@ class MesaAbba(Model):
     libor_rate = None
     min_reserves_ratio = None
 
+    lst_bank_ratio = list()
+
     def initialize_deposit_base(self):
-        for i in self.G.nodes:
-            bank = [x for x in self.G.nodes[i]['agent'] if isinstance(x, Bank)][0]
-            savers = [x for x in self.G.nodes[i]['agent'] if isinstance(x, Saver)]
+        for bank in [x for x in self.schedule.agents if isinstance(x, Bank)]:
+            savers = [x for x in self.schedule.agents if isinstance(x, Saver) and x.pos == bank.pos]
             bank.bank_deposits = sum([x.balance for x in savers]) + bank.equity
-            bank.bank_reserves = bank.bank_deposits * self.min_reserves_ratio
+            bank.bank_reserves = bank.bank_deposits + bank.equity
 
     def initialize_loan_book(self):
         for bank in [x for x in self.schedule.agents if isinstance(x, Bank)]:
-            bank.bank_reserves = bank.bank_deposits * self.min_reserves_ratio
+            bank.bank_reserves = bank.equity + bank.bank_deposits
             bank.calculate_reserve_ratio()
             bank.max_rwa = bank.equity / (1.1 * self.car)
             interim_reserves = bank.bank_reserves
@@ -57,6 +59,7 @@ class MesaAbba(Model):
                     interim_reserves_ratio = interim_reserves / interim_deposits if interim_deposits != 0 else 0
                     loan.loan_approved = True
                     unit_loan = unit_loan + loan.amount
+                    rwa = rwa + loan.rweight * loan.amount
                     # TO DO: Change bank node color to yellow
             bank.bank_loans = unit_loan
             bank.rwassets = rwa
@@ -166,7 +169,7 @@ class MesaAbba(Model):
             # TO DO: change colour to turquoise
         # they should add to zero 0
         solvent_bank.bank_loans = sum([x.amount for x in self.schedule.agents if isinstance(x, Loan) and
-                                        x.pos == solvent_bank.pos and x.loan_approved and x.loan_solvent])
+                                       x.pos == solvent_bank.pos and x.loan_approved and x.loan_solvent])
         solvent_bank.bank_deposits = sum([x.balance for x in self.schedule.agents if isinstance(x, Saver) and
                                           x.pos == solvent_bank.pos and x.owns_account])
         solvent_bank.equity = 0
@@ -414,7 +417,7 @@ class MesaAbba(Model):
                     interim_rwassets = cap_bank.rwassets
                     interim_reserves = cap_bank.bank_reserves
                     interim_deposits = cap_bank.bank_deposits
-                    interim_capital_ratio = interim_equity / interim_rwassets if interim_rwassets !=0 else 0
+                    interim_capital_ratio = interim_equity / interim_rwassets if interim_rwassets != 0 else 0
 
                     # let interim-capital-ratio  capital-ratio  :: original line in the progrma
                     interim_reserve_ratio = cap_bank.bank_reserves / cap_bank.bank_deposits if cap_bank.bank_deposits != 0 else 0
@@ -422,7 +425,8 @@ class MesaAbba(Model):
                     # let interim-reserve-ratio reserves-ratio
                     interim_loans = cap_bank.bank_loans
 
-                    for loan in [x for x in self.schedule.agents if isinstance(x, Loan) and x.loan_approved and x.loan_solvent]:
+                    for loan in [x for x in self.schedule.agents if
+                                 isinstance(x, Loan) and x.loan_approved and x.loan_solvent]:
                         loan_discount = 0  # no fire_sale of assets when paying dividends, bank is not distressed
                         loan_equity = interim_equity - loan.amount * loan_discount
                         loan_rwassets = interim_rwassets - loan.rwamount
@@ -451,7 +455,7 @@ class MesaAbba(Model):
         for loan in [x for x in self.schedule.agents if isinstance(x, Loan) and x.loan_approved and not x.loan_solvent]:
             loan.loan_solvent = True
             loan.loan_approved = False
-            #TO DO: set color 107
+            # TO DO: set color 107
 
     def main_build_loan_book_locally(self):
         for solvent_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_capitalized]:
@@ -466,12 +470,14 @@ class MesaAbba(Model):
             interim_provisions = solvent_bank.bank_provisions
 
             for avail_loan in [x for x in self.schedule.agents if isinstance(x, Loan) and x.pos == solvent_bank.pos and
-                                not x.loan_approved and x.loan_solvent]:
+                                                                  not x.loan_approved and x.loan_solvent]:
 
                 interim_capital_ratio = (interim_equity - avail_loan.pdef * avail_loan.lgdamount) / \
-                                        (interim_rwa + avail_loan.rwamount) if (interim_rwa + avail_loan.rwamount) !=0 else 0
-                interim_reserve_ratio = (interim_reserves - avail_loan.pdef * avail_loan.lgdamount - avail_loan.amount) / \
-                                        interim_deposits if interim_deposits !=0 else 0
+                                        (interim_rwa + avail_loan.rwamount) if (
+                                                                                           interim_rwa + avail_loan.rwamount) != 0 else 0
+                interim_reserve_ratio = (
+                                                    interim_reserves - avail_loan.pdef * avail_loan.lgdamount - avail_loan.amount) / \
+                                        interim_deposits if interim_deposits != 0 else 0
                 if interim_capital_ratio > self.car and interim_reserve_ratio > self.min_reserves_ratio:
                     interim_rwa = interim_rwa + avail_loan.rwamount
                     interim_equity = interim_equity - avail_loan.pdef * avail_loan.lgdamount
@@ -496,10 +502,11 @@ class MesaAbba(Model):
             solvent_bank.calculate_leverage_ratio()
 
             # assets=liabilities? (equity + bank-deposits + IB-debits) - (bank-loans + bank-reserves + IB-credits)
+
     def main_build_loan_book_globally(self):
         solvent_banks = [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_capitalized]
         weak_banks = [x for x in self.schedule.agents if isinstance(x, Bank) and
-                           not x.bank_capitalized and not x.bank_solvent]
+                      not x.bank_capitalized and not x.bank_solvent]
         avail_loans = list()
         for weak_bank in weak_banks:
             avail_loans.extend([x for x in self.schedule.agents if isinstance(x, Loan) and x.pos == weak_bank.pos and
@@ -514,10 +521,12 @@ class MesaAbba(Model):
             interim_loans = solvent_bank.bank_loans
             interim_provisions = solvent_bank.bank_provisions
             for avail_loan in avail_loans:
-                interim_capital_ratio = (interim_equity - avail_loan.pdef * avail_loan.lgdamount )  / \
-                                        (interim_rwa + avail_loan.rwamount) if (interim_rwa + avail_loan.rwamount) != 0 else 0
-                interim_reserve_ratio = (interim_reserves - avail_loan.pdef * avail_loan.lgdamount - avail_loan.amount)/\
-                                        interim_deposits if interim_deposits !=0 else 0
+                interim_capital_ratio = (interim_equity - avail_loan.pdef * avail_loan.lgdamount) / \
+                                        (interim_rwa + avail_loan.rwamount) if (
+                                                                                           interim_rwa + avail_loan.rwamount) != 0 else 0
+                interim_reserve_ratio = (
+                                                    interim_reserves - avail_loan.pdef * avail_loan.lgdamount - avail_loan.amount) / \
+                                        interim_deposits if interim_deposits != 0 else 0
                 if interim_capital_ratio > self.car and interim_reserve_ratio > self.min_reserves_ratio:
                     interim_loans = interim_loans + avail_loan.amount
                     interim_reserves = interim_reserves - avail_loan.amount - avail_loan.pdef * avail_loan.lgdamount
@@ -542,7 +551,7 @@ class MesaAbba(Model):
             solvent_bank.calculate_leverage_ratio()
 
             # assets=liabilities? (equity + bank-deposits + IB-debits) - (bank-loans + bank-reserves + IB-credits)
-    
+
     def process_deposit_withdrawal(self):
         # savers withdraw funds from solvent banks
         # banks that are insolvent have already liquidated their loan portfolio and
@@ -559,7 +568,8 @@ class MesaAbba(Model):
                                                     x.pos == solvent_bank.pos and x.bank_id == 9999])
 
     def process_deposit_reassignment(self):
-        cap_bankpos = [x.pos for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent and x.bank_capitalized]
+        cap_bankpos = [x.pos for x in self.schedule.agents if
+                       isinstance(x, Bank) and x.bank_solvent and x.bank_capitalized]
         savers = [x for x in self.schedule.agents if isinstance(x, Saver) and x.bank_id == 9999]
         for saver in savers:
             bankpos = random.choice(cap_bankpos)
@@ -568,7 +578,8 @@ class MesaAbba(Model):
             # TO DO: saver.saver_last_color = color
 
         for solvent_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]:
-            solvent_bank.deposit_inflow = sum([x.balance for x in savers and x.pos == solvent_bank.pos and x.owns_account == True])
+            solvent_bank.deposit_inflow = sum(
+                [x.balance for x in savers and x.pos == solvent_bank.pos and x.owns_account == True])
             solvent_bank.net_deposit_flow = solvent_bank.deposit_inflow - solvent_bank.deposit_outflow
 
     def process_deposit_flow_rebalancing(self):
@@ -615,7 +626,6 @@ class MesaAbba(Model):
 
         # TO DO: set assets=liabilities? (equity + bank-deposits + IB-debits) - (bank-loans + bank-reserves + IB-credits)
 
-
     def process_evaluate_liquidity_needs(self):
         for solvent_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]:
             solvent_bank.calculate_reserve_ratio()
@@ -627,7 +637,7 @@ class MesaAbba(Model):
             bankrun_bank.liquidity_failure = True
 
         for noliqcap_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and
-                              x.reserves_ratio < self.min_reserves_ratio and x.capital_ratio >= self.car]:
+                                                                 x.reserves_ratio < self.min_reserves_ratio and x.capital_ratio >= self.car]:
             # TO DO: change color Yellow
             self.process_access_interbank_market(noliqcap_bank)
 
@@ -636,13 +646,12 @@ class MesaAbba(Model):
         # able to find all the resources they needed
 
         for noliqcap_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent and
-                              0 < x.reserves_ratio < self.min_reserves_ratio and not x.bank_capitalized]:
+                                                                 0 < x.reserves_ratio < self.min_reserves_ratio and not x.bank_capitalized]:
             print('Remove this print after implementing below to do')
             # TO DO: change colour to Yellow
 
-
     def main_evaluate_liquidity(self):
-   
+
         # the four procedures will cause some banks to have:
         #
         # excess reserves: bank-reserves > minimum-reserves
@@ -664,12 +673,10 @@ class MesaAbba(Model):
         #   process-deposit-flow-rebalancing: all bank-deposits and bank-reserves are
         #     adjusted to reflect the movement in reserves
 
-
         self.process_deposit_withdrawal()
         self.process_deposit_reassignment()
         self.process_deposit_flow_rebalancing()
         self.process_evaluate_liquidity_needs()
-
 
     def __init__(self, height=20, width=20, initial_saver=10000, initial_loan=20000, initial_bank=10,
                  rfree=0.01, car=0.08, min_reserves_ratio=0.03):
@@ -703,12 +710,9 @@ class MesaAbba(Model):
 
         for i in range(self.initial_saver):
             saver = Saver(self.next_id(), self)
-            self.grid.place_agent(saver, i % 10)
+            #self.grid.place_agent(saver, i % 10)
+            self.grid.place_agent(saver, random.choice(list(self.G.nodes)))
             self.schedule.add(saver)
-
-        # for i in range(self.initial_ibloan):
-        #    ibloan = Ibloan(self.next_id(), self, libor_rate=self.libor_rate)
-        #    self.schedule.add(ibloan)
 
         for i in range(self.initial_loan):
             loan = Loan(self.next_id(), self, rfree=self.rfree)
@@ -720,6 +724,30 @@ class MesaAbba(Model):
 
         self.running = True
         self.datacollector.collect(self)
+
+    def main_write_bank_ratios(self):
+        for bank in [x for x in self.schedule.agents if isinstance(x, Bank)]:
+            self.lst_bank_ratio.append([
+                self.car,
+                self.min_reserves_ratio,
+                bank.pos,
+                bank.capital_ratio,
+                bank.reserves_ratio,
+                bank.leverage_ratio,
+                bank.upper_bound_cratio,
+                bank.buffer_reserves_ratio,
+                bank.bank_dividend,
+                bank.bank_cum_dividend,
+                bank.bank_loans,
+                bank.bank_reserves,
+                bank.bank_deposits,
+                bank.equity,
+                bank.total_assets,
+                bank.rwassets,
+                bank.credit_failure,
+                bank.liquidity_failure
+            ])
+
 
     def step(self):
 
@@ -749,6 +777,8 @@ class MesaAbba(Model):
         # Evaluate liquidity needs related to reserves requirements
         self.main_evaluate_liquidity()
 
+        self.main_write_bank_ratios()
+
         self.schedule.step()
         self.datacollector.collect(self)
 
@@ -757,4 +787,5 @@ class MesaAbba(Model):
             self.step()
             if len([x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]) == 0:
                 break
+        return pd.DataFrame(self.lst_bank_ratio)
 
