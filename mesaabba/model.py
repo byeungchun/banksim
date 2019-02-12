@@ -30,6 +30,7 @@ class MesaAbba(Model):
     min_reserves_ratio = None
 
     lst_bank_ratio = list()
+    lst_ibloan = list()
 
     def initialize_deposit_base(self):
         for bank in [x for x in self.schedule.agents if isinstance(x, Bank)]:
@@ -49,12 +50,20 @@ class MesaAbba(Model):
             unit_loan = 0
             available_loans = True
 
-            while available_loans and rwa < bank.max_rwa and \
-                    interim_reserves_ratio > bank.buffer_reserves_ratio * self.min_reserves_ratio:
-                loans = [x for x in self.schedule.agents if
-                         isinstance(x, Loan) and bank.pos == x.pos and not x.loan_approved]
-                if len(loans) > 0:
-                    loan = random.choice(loans)
+            for loan in [x for x in self.schedule.agents if
+                         isinstance(x, Loan) and bank.pos == x.pos and not x.loan_approved]:
+                if not (available_loans and rwa < bank.max_rwa and \
+                        interim_reserves_ratio > bank.buffer_reserves_ratio * self.min_reserves_ratio):
+                    break
+                else:
+            # This is original script on netlogo. But it spends a lot of time to calculate
+            #
+            # while available_loans and rwa < bank.max_rwa and \
+            #         interim_reserves_ratio > bank.buffer_reserves_ratio * self.min_reserves_ratio:
+            #     loans = [x for x in self.schedule.agents if
+            #              isinstance(x, Loan) and bank.pos == x.pos and not x.loan_approved]
+            #     if len(loans) > 0:
+            #         loan = random.choice(loans)
                     interim_reserves = interim_reserves - loan.amount
                     interim_reserves_ratio = interim_reserves / interim_deposits if interim_deposits != 0 else 0
                     loan.loan_approved = True
@@ -748,6 +757,9 @@ class MesaAbba(Model):
                 bank.liquidity_failure
             ])
 
+    def main_write_interbank_links(self):
+        for ibloan in [x for x in self.schedule.agents if isinstance(x, Ibloan)]:
+            self.lst_ibloan.append([ibloan.ib_creditor, ibloan.ib_debtor, ibloan.ib_amount])
 
     def step(self):
 
@@ -778,14 +790,16 @@ class MesaAbba(Model):
         self.main_evaluate_liquidity()
 
         self.main_write_bank_ratios()
+        self.main_write_interbank_links()
 
         self.schedule.step()
         self.datacollector.collect(self)
 
     def run_model(self, step_count=200):
         for i in range(step_count):
+            print('STEP: ' + str(i))
             self.step()
             if len([x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]) == 0:
                 break
-        return pd.DataFrame(self.lst_bank_ratio)
+        return pd.DataFrame(self.lst_bank_ratio), pd.DataFrame(self.lst_ibloan)
 
