@@ -183,5 +183,5 @@ class Bank(Agent):
         self.ib_net_interest_income = 0
         self.ib_credit_loss = 0
 
-    def step(self):
-        print('Bank step')
+    # def step(self):
+    #     print('Bank step')
