@@ -24,7 +24,7 @@ def mesa_abba_network_portrayal(G):
     return portrayal
 
 
-canvas_network = NetworkModule(mesa_abba_network_portrayal, 500, 500, library='sigma')
+canvas_network = NetworkModule(mesa_abba_network_portrayal, 400, 400, library='sigma')
 chart_element = ChartModule([{"Label":"Saver","Color":"#AA0000"},
                              {"Label":"Bank", "Color": "#666666"}])
 
