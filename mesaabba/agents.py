@@ -63,7 +63,7 @@ class Loan(Agent):
     loan_last_color = None  # used to create visual effects
 
     def __init__(self, unique_id, model, amount=1, loan_solvent=True, loan_approved=False, loan_dumped=False,
-                 loan_liquidated=False,rcvry_rate=0.06, rfree=0):
+                 loan_liquidated=False,rcvry_rate=0.4, rfree=0):
         super().__init__(unique_id, model)
         self.amount = amount
         self.loan_solvent = loan_solvent
