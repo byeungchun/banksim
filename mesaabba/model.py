@@ -50,20 +50,18 @@ class MesaAbba(Model):
             unit_loan = 0
             available_loans = True
 
-            for loan in [x for x in self.schedule.agents if
-                         isinstance(x, Loan) and bank.pos == x.pos and not x.loan_approved]:
-                if not (available_loans and rwa < bank.max_rwa and \
-                        interim_reserves_ratio > bank.buffer_reserves_ratio * self.min_reserves_ratio):
-                    break
-                else:
-            # This is original script on netlogo. But it spends a lot of time to calculate
-            #
-            # while available_loans and rwa < bank.max_rwa and \
-            #         interim_reserves_ratio > bank.buffer_reserves_ratio * self.min_reserves_ratio:
-            #     loans = [x for x in self.schedule.agents if
-            #              isinstance(x, Loan) and bank.pos == x.pos and not x.loan_approved]
-            #     if len(loans) > 0:
-            #         loan = random.choice(loans)
+            for i, loan in enumerate([x for x in self.schedule.agents if
+                         isinstance(x, Loan) and bank.pos == x.pos and not x.loan_approved]):
+                # This is original script on netlogo. But it spends a lot of time to calculate
+                #
+                # while available_loans and rwa < bank.max_rwa and \
+                #         interim_reserves_ratio > bank.buffer_reserves_ratio * self.min_reserves_ratio:
+                #     loans = [x for x in self.schedule.agents if
+                #              isinstance(x, Loan) and bank.pos == x.pos and not x.loan_approved]
+                #     if len(loans) > 0:
+                #         loan = random.choice(loans)
+                if available_loans and rwa < bank.max_rwa and \
+                        interim_reserves_ratio > bank.buffer_reserves_ratio * self.min_reserves_ratio:
                     interim_reserves = interim_reserves - loan.amount
                     interim_reserves_ratio = interim_reserves / interim_deposits if interim_deposits != 0 else 0
                     loan.loan_approved = True
@@ -106,6 +104,7 @@ class MesaAbba(Model):
              and x.pos == solvent_bank.pos and x.loan_approved and x.loan_solvent])
 
         change_in_provisions = solvent_bank.bank_new_provisions - solvent_bank.bank_provisions
+
         solvent_bank.bank_provisions = solvent_bank.bank_new_provisions
         solvent_bank.equity = solvent_bank.equity - change_in_provisions
         solvent_bank.bank_reserves = solvent_bank.bank_reserves + sum(
@@ -147,7 +146,7 @@ class MesaAbba(Model):
         #  let proceeds-from-liquidated-loans sum [ lgdamount] of
         #    loans-with-insolvent-bank
         if self.bankrupt_liquidation == 0:
-            proceed_from_loans = sum([x.lgdamount for x in loans_with_insolvent_bank])
+            proceed_from_loans = sum([x.loan_recovery for x in loans_with_insolvent_bank])
         # 1. loans are sold in the market, and banks suffer fire-sale losses
         elif self.bankrupt_liquidation == 1:
             proceed_from_loans = sum([(1 - x.fire_sale_loss) * x.amount for x in loans_with_insolvent_bank])
@@ -164,7 +163,7 @@ class MesaAbba(Model):
                 saver.balance = 0
                 # TO DO: change color to BROWN
         # WHY it counts numbers of savers instead of balance sum???
-        if recovered_funds < len(savers_with_insolvent_bank) and recovered_funds > 0:
+        if 0 < recovered_funds < len(savers_with_insolvent_bank):
             for saver in random.sample(savers_with_insolvent_bank, len(savers_with_insolvent_bank) - recovered_funds):
                 saver.saver_solvent = False
                 saver.balance = 0
@@ -186,7 +185,7 @@ class MesaAbba(Model):
         solvent_bank.reserves_ratio = 0
         solvent_bank.leverage_ratio = 0
         solvent_bank.rwassets = 0
-        solvent_bank.bank_solvent_bank = False
+        solvent_bank.bank_solvent = False
         solvent_bank.bank_capitalized = False
         solvent_bank.total_assets = 0
         solvent_bank.capital_ratio = 0
@@ -483,9 +482,9 @@ class MesaAbba(Model):
 
                 interim_capital_ratio = (interim_equity - avail_loan.pdef * avail_loan.lgdamount) / \
                                         (interim_rwa + avail_loan.rwamount) if (interim_rwa + avail_loan.rwamount) != 0 else 0
-                interim_reserve_ratio = (interim_reserves - avail_loan.pdef * avail_loan.lgdamount - avail_loan.amount) / \
+                interim_reserves_ratio = (interim_reserves - avail_loan.pdef * avail_loan.lgdamount - avail_loan.amount) / \
                                         interim_deposits if interim_deposits != 0 else 0
-                if interim_capital_ratio > self.car and interim_reserve_ratio > self.min_reserves_ratio:
+                if interim_capital_ratio > self.car and interim_reserves_ratio > desired_reserves_ratio:
                     interim_rwa = interim_rwa + avail_loan.rwamount
                     interim_equity = interim_equity - avail_loan.pdef * avail_loan.lgdamount
                     interim_reserves = interim_reserves - avail_loan.amount - avail_loan.pdef * avail_loan.lgdamount
@@ -696,7 +695,6 @@ class MesaAbba(Model):
             self.lst_bank_ratio.append([
                 self.car,
                 self.min_reserves_ratio,
-                bank.pos,
                 bank.capital_ratio,
                 bank.reserves_ratio,
                 bank.leverage_ratio,
@@ -753,7 +751,9 @@ class MesaAbba(Model):
 
         for i in range(self.initial_loan):
             loan = Loan(self.next_id(), self, rfree=self.rfree)
-            self.grid.place_agent(loan, i % 10) # Evenly distributed
+            bank_id = random.choice(list(self.G.nodes))
+            loan.bank_id = bank_id
+            self.grid.place_agent(loan, bank_id) # Evenly distributed
             self.schedule.add(loan)
 
         self.initialize_deposit_base()
@@ -801,9 +801,9 @@ class MesaAbba(Model):
 
     def run_model(self, step_count=200):
         for i in range(step_count):
-            print('STEP: ' + str(i))
+            print('STEP: ' + str(i) + ' - # Solvent: ' + str(len([x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent])))
             self.step()
             if len([x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]) == 0:
                 break
-        return pd.DataFrame(self.lst_bank_ratio), pd.DataFrame(self.lst_ibloan)
+        return pd.DataFrame(self.lst_bank_ratio)
 
