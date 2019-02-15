@@ -104,9 +104,9 @@ class Bank(Agent):
     net_interest_income = None  # net interest income, balance sheet
     interest_income = None  # interest income, loans
     interest_expense = None  # interest expense, depositors
-    ib_interest_income = None  # interest income, interbank
-    ib_interest_expense = None  # interest expense, interbank
-    ib_net_interest_income = None  # net interest, interbank
+    ib_interest_income = 0  # interest income, interbank
+    ib_interest_expense = 0  # interest expense, interbank
+    ib_net_interest_income = 0  # net interest, interbank
     ib_credit_loss = None  # credit losses, interbank exposures
     # reporting requirements
     #

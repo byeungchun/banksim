@@ -107,8 +107,7 @@ class MesaAbba(Model):
 
         solvent_bank.bank_provisions = solvent_bank.bank_new_provisions
         solvent_bank.equity = solvent_bank.equity - change_in_provisions
-        solvent_bank.bank_reserves = solvent_bank.bank_reserves + sum(
-            [x.loan_recovery for x in loans_with_bank_default])
+        solvent_bank.bank_reserves = solvent_bank.bank_reserves + sum([x.loan_recovery for x in loans_with_bank_default])
         solvent_bank.bank_reserves = solvent_bank.bank_reserves - change_in_provisions
         solvent_bank.bank_loans = solvent_bank.bank_loans - sum([x.amount for x in loans_with_bank_default])
         solvent_bank.defaulted_loans = solvent_bank.defaulted_loans + sum([x.amount for x in loans_with_bank_default])
@@ -256,7 +255,7 @@ class MesaAbba(Model):
         while len(set(solvent_banks).intersection(solvent_banks_afterwards)) != len(solvent_banks):
             for solvent_bank in solvent_banks:
                 self.calculate_interbank_credit_loss(solvent_bank)
-                self.calculate_interbank_interest_income(solvent_bank)
+                # self.calculate_interbank_interest_income(solvent_bank)
                 self.calculate_interbank_interest_expense(solvent_bank)
                 self.calculate_interbank_net_interest_income(solvent_bank)
 
@@ -332,7 +331,7 @@ class MesaAbba(Model):
             current_rwassets = uncap_bank.rwassets
             n_dumped_loans = 0
 
-            for loan in [x for x in self.schedule.agents if isinstance(x, Loan) and x.loan_approved and x.loan_solvent]:
+            for loan in [x for x in self.schedule.agents if isinstance(x, Loan) and x.pos == uncap_bank.pos and x.loan_approved and x.loan_solvent]:
                 loan_equity = interim_equity - loan.amount * loan.fire_sale_loss + loan.pdef * loan.lgdamount
                 loan_rwassets = interim_rwassets - loan.rwamount
                 loan_capital_ratio = loan_equity / loan_rwassets if loan_rwassets != 0 else 0
@@ -395,7 +394,7 @@ class MesaAbba(Model):
                     saver.owns_account = False
                     # TO DO: colour White
                 uncap_bank.equity = uncap_bank.equity - (n_dumped_loans - len(savers_in_bank))
-            uncap_bank.bank_deposits = sum([x.balance for x in savers_in_bank])
+            uncap_bank.bank_deposits = sum([x.balance for x in savers_in_bank if x.owns_account])
 
     def main_pay_dividends(self):
         for cap_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.capital_ratio > self.car]:
