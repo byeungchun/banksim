@@ -35,6 +35,9 @@ class MesaAbba(Model):
     def initialize_deposit_base(self):
         for bank in [x for x in self.schedule.agents if isinstance(x, Bank)]:
             savers = [x for x in self.schedule.agents if isinstance(x, Saver) and x.pos == bank.pos]
+            for saver in savers:
+                saver.bank_id = bank.pos
+                saver.owns_account = True
             bank.bank_deposits = sum([x.balance for x in savers])
             bank.bank_reserves = bank.bank_deposits + bank.equity
 
@@ -212,7 +215,7 @@ class MesaAbba(Model):
                 self.process_unwind_loans_insolvent_bank(solvent_bank)
 
             else:
-                if solvent_bank.capital_ratio < self.car and solvent_bank.capital_ratio > 0:
+                if 0 < solvent_bank.capital_ratio < self.car:
                     solvent_bank.bank_capitalized = False
                     solvent_bank.bank_solvent = True
                     # TO DO: change colour to Cyan
@@ -692,23 +695,27 @@ class MesaAbba(Model):
     def main_write_bank_ratios(self):
         for bank in [x for x in self.schedule.agents if isinstance(x, Bank)]:
             self.lst_bank_ratio.append([
-                self.car,
-                self.min_reserves_ratio,
-                bank.capital_ratio,
-                bank.reserves_ratio,
-                bank.leverage_ratio,
-                bank.upper_bound_cratio,
-                bank.buffer_reserves_ratio,
-                bank.bank_dividend,
-                bank.bank_cum_dividend,
-                bank.bank_loans,
-                bank.bank_reserves,
-                bank.bank_deposits,
-                bank.equity,
-                bank.total_assets,
-                bank.rwassets,
-                bank.credit_failure,
-                bank.liquidity_failure
+                bank.pos,
+                self.car,                   # 0
+                self.min_reserves_ratio,    # 1
+                bank.capital_ratio,         # 2
+                bank.reserves_ratio,        # 3
+                bank.leverage_ratio,        # 4
+                bank.upper_bound_cratio,    # 5
+                bank.buffer_reserves_ratio, # 6
+                bank.bank_dividend,         # 7
+                bank.bank_cum_dividend,     # 8
+                bank.bank_loans,            # 9
+                bank.interest_income,       # 10
+                bank.interest_expense,      # 11
+                bank.bank_reserves,         # 12
+                bank.bank_deposits,         # 13
+                bank.equity,                # 14
+                bank.total_assets,          # 15
+                bank.rwassets,              # 16
+                bank.credit_failure,        # 17
+                bank.liquidity_failure,      # 18
+                len([x for x in self.schedule.agents if isinstance(x, Saver) and x.pos == bank.pos])
             ])
 
     def main_write_interbank_links(self):
@@ -798,7 +805,7 @@ class MesaAbba(Model):
         self.schedule.step()
         self.datacollector.collect(self)
 
-    def run_model(self, step_count=200):
+    def run_model(self, step_count=20):
         for i in range(step_count):
             print('STEP: ' + str(i) + ' - # Solvent: ' + str(len([x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent])))
             self.step()
