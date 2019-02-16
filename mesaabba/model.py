@@ -3,6 +3,7 @@ from mesa.space import MultiGrid, NetworkGrid
 from mesa.time import RandomActivation
 from mesa.datacollection import DataCollector
 
+import logging
 import random
 import numpy as np
 import networkx as nx
@@ -10,6 +11,7 @@ import pandas as pd
 
 from mesaabba.agents import Saver, Ibloan, Loan, Bank
 
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 def get_num_agents(model):
     return len([a for a in model.schedule.agents])
@@ -131,6 +133,7 @@ class MesaAbba(Model):
         solvent_bank.net_interest_income = solvent_bank.interest_income - solvent_bank.interest_expense
 
     def process_unwind_loans_insolvent_bank(self, solvent_bank):
+        logging.info('Insolvent bank: %d', solvent_bank.pos)
         # Remember bank enters with negative equity after posting the required provisions
         # so the money available from provisions is:
         # bank-provisions + equity (the latter is negative)
@@ -166,7 +169,7 @@ class MesaAbba(Model):
                 # TO DO: change color to BROWN
         # WHY it counts numbers of savers instead of balance sum???
         if 0 < recovered_funds < len(savers_with_insolvent_bank):
-            for saver in random.sample(savers_with_insolvent_bank, len(savers_with_insolvent_bank) - recovered_funds):
+            for saver in random.sample(savers_with_insolvent_bank, int(np.ceil(len(savers_with_insolvent_bank) - recovered_funds))):
                 saver.saver_solvent = False
                 saver.balance = 0
                 # TO DO: change colour to brown
@@ -237,13 +240,13 @@ class MesaAbba(Model):
     def calculate_interbank_interest_income(self, solvent_bank):
         # QUESTION: in netlogo script, it is (1 + x.ib_rate). But it looks wrong because it is interest income
         solvent_bank.ib_interest_income = sum(
-            [x.ib_amount * x.ib_rate for x in self.schedule.agents if isinstance(x, Ibloan) and
+            [x.ib_amount * (1 + x.ib_rate) for x in self.schedule.agents if isinstance(x, Ibloan) and
              x.ib_creditor == solvent_bank and x.ib_debtor.bank_solvent])
 
     def calculate_interbank_interest_expense(self, solvent_bank):
         # QUESTION: in netlogo script, it is (1 + x.ib_rate). But it looks wrong because it is interest income
         solvent_bank.ib_interest_expense = sum(
-            [x.ib_amount * x.ib_rate for x in self.schedule.agents if isinstance(x, Ibloan) and
+            [x.ib_amount * (1 + x.ib_rate) for x in self.schedule.agents if isinstance(x, Ibloan) and
              x.ib_debtor == solvent_bank])
 
     def calculate_interbank_net_interest_income(self, solvent_bank):
@@ -256,9 +259,10 @@ class MesaAbba(Model):
         insolvent_banks = [x for x in self.schedule.agents if isinstance(x, Bank) and not x.bank_solvent]
         solvent_banks_afterwards = list()
         while len(set(solvent_banks).intersection(solvent_banks_afterwards)) != len(solvent_banks):
+            logging.debug('while looping')
             for solvent_bank in solvent_banks:
                 self.calculate_interbank_credit_loss(solvent_bank)
-                # self.calculate_interbank_interest_income(solvent_bank)
+                self.calculate_interbank_interest_income(solvent_bank)
                 self.calculate_interbank_interest_expense(solvent_bank)
                 self.calculate_interbank_net_interest_income(solvent_bank)
 
@@ -289,7 +293,7 @@ class MesaAbba(Model):
                     # TO DO: change colour to RED
                     self.process_unwind_loans_insolvent_bank(solvent_bank)
 
-                if self.car > solvent_bank.capital_ratio > 0:
+                if 0 < solvent_bank.capital_ratio < self.car:
                     solvent_bank.bank_capitalized = False
                     solvent_bank.bank_solvent = True
                     # TO DO: change colour to Cyan
@@ -309,9 +313,10 @@ class MesaAbba(Model):
 
             solvent_banks_afterwards = [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]
             if len(solvent_banks) != len(set(solvent_banks_afterwards).intersection(solvent_banks)):
-                solvent_banks_afterwards = list()
                 solvent_banks = solvent_banks_afterwards
+                solvent_banks_afterwards = list()
 
+            logging.debug('while looping -end')
         for bank in [x for x in self.schedule.agents if isinstance(x, Bank)]:
             bank.initialize_ib_variables()
 
@@ -390,7 +395,7 @@ class MesaAbba(Model):
                               x.pos == uncap_bank.pos and x.owns_account]
             if n_dumped_loans < len(savers_in_bank):
                 for saver in random.sample(savers_in_bank, n_dumped_loans):
-                    saver.own_account = False
+                    saver.owns_account = False
                     # TO DO: colour White
             else:
                 for saver in savers_in_bank:
@@ -570,19 +575,25 @@ class MesaAbba(Model):
         # banks that are insolvent have already liquidated their loan portfolio and
         # returned their deposits to savers
         for solvent_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]:
-            for saver in [x for x in self.schedule.agents if isinstance(x, Saver) and x.pos == solvent_bank.pos and
-                                                             x.owns_account]:
+            savers = [x for x in self.schedule.agents if isinstance(x, Saver) and x.pos == solvent_bank.pos and
+                      x.saver_solvent and x.owns_account]
+            logging.debug('process_deposit_withdrawal- num savers: %d of bank %d',len(savers),solvent_bank.pos)
+            for saver in savers:
                 if random.random() < saver.withdraw_prob:
                     saver.bank_id = 9999
                     saver.owns_account = False
                     # TO DO: saver.saver_last_color = color
                     # TO DO: change color Red
-                solvent_bank.deposit_outflow = sum([x.balance for x in self.schedule.agents if isinstance(x, Saver) and
-                                                    x.pos == solvent_bank.pos and x.bank_id == 9999])
+                    solvent_bank.deposit_outflow = solvent_bank.deposit_outflow + saver.balance
+                #solvent_bank.deposit_outflow = sum([x.balance for x in self.schedule.agents if isinstance(x, Saver) and
+                #                                    x.pos == solvent_bank.pos and x.bank_id == 9999])
 
     def process_deposit_reassignment(self):
         cap_bankpos = [x.pos for x in self.schedule.agents if
                        isinstance(x, Bank) and x.bank_solvent and x.bank_capitalized]
+        if len(cap_bankpos) == 0:
+            cap_bankpos = [x.pos for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]
+
         savers = [x for x in self.schedule.agents if isinstance(x, Saver) and x.bank_id == 9999]
         for saver in savers:
             bankpos = random.choice(cap_bankpos)
@@ -609,10 +620,9 @@ class MesaAbba(Model):
     def process_access_interbank_market(self, bank):
         liq_banks = [x for x in self.schedule.agents if isinstance(x, Bank) and x.capital_ratio >= self.car and
                      x.reserves_ratio > x.buffer_reserves_ratio * self.min_reserves_ratio]
-        for liq_bank in liq_banks:
-            print('Remove this print after implementing below to do')
+        # for liq_bank in liq_banks:
+            # print('Remove this print after implementing below to do')
             # TO DO: change colour to Green
-        current_reserves = bank.bank_reserves
         needed_reserves = self.min_reserves_ratio * bank.bank_deposits - bank.bank_reserves
         # TO DO: change colour to Yellow
         available_reserves = sum([x.bank_reserves - x.buffer_reserves_ratio * self.min_reserves_ratio * x.bank_deposits
@@ -630,6 +640,7 @@ class MesaAbba(Model):
             ibloan = Ibloan(self.next_id(), self, self.libor_rate)
             ibloan.ib_creditor = liq_bank
             ibloan.ib_amount = liquidity_contribution
+            ibloan.ib_debtor = bank
             # TO DO: change color Red
             # TO DO: set line to thickness 3
 
@@ -659,9 +670,9 @@ class MesaAbba(Model):
         # it could be the case that some banks attempting to find resources were not
         # able to find all the resources they needed
 
-        for noliqcap_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent and
-                                                                 0 < x.reserves_ratio < self.min_reserves_ratio and not x.bank_capitalized]:
-            print('Remove this print after implementing below to do')
+        #for noliqcap_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent and
+        #                                                         0 < x.reserves_ratio < self.min_reserves_ratio and not x.bank_capitalized]:
+            #print('Remove this print after implementing below to do')
             # TO DO: change colour to Yellow
 
     def main_evaluate_liquidity(self):
@@ -688,6 +699,7 @@ class MesaAbba(Model):
         #     adjusted to reflect the movement in reserves
 
         self.process_deposit_withdrawal()
+        logging.debug('process_deposit_withdrawal')
         self.process_deposit_reassignment()
         self.process_deposit_flow_rebalancing()
         self.process_evaluate_liquidity_needs()
@@ -695,7 +707,7 @@ class MesaAbba(Model):
     def main_write_bank_ratios(self):
         for bank in [x for x in self.schedule.agents if isinstance(x, Bank)]:
             self.lst_bank_ratio.append([
-                bank.pos,
+                #bank.pos,
                 self.car,                   # 0
                 self.min_reserves_ratio,    # 1
                 bank.capital_ratio,         # 2
@@ -706,16 +718,16 @@ class MesaAbba(Model):
                 bank.bank_dividend,         # 7
                 bank.bank_cum_dividend,     # 8
                 bank.bank_loans,            # 9
-                bank.interest_income,       # 10
-                bank.interest_expense,      # 11
+                #bank.interest_income,       # 10
+                #bank.interest_expense,      # 11
                 bank.bank_reserves,         # 12
                 bank.bank_deposits,         # 13
                 bank.equity,                # 14
                 bank.total_assets,          # 15
                 bank.rwassets,              # 16
                 bank.credit_failure,        # 17
-                bank.liquidity_failure,      # 18
-                len([x for x in self.schedule.agents if isinstance(x, Saver) and x.pos == bank.pos])
+                bank.liquidity_failure      # 18
+                #len([x for x in self.schedule.agents if isinstance(x, Saver) and x.pos == bank.pos])
             ])
 
     def main_write_interbank_links(self):
@@ -775,30 +787,30 @@ class MesaAbba(Model):
 
         # evaluate solvency of banks after loans experience default
         self.main_evaluate_solvency()
-
+        logging.debug('main_evaluate_solvency')
         # evaluate second round effects owing to cross_bank linkages
         # only interbank loans to cover shortages in reserves requirements are included
         self.main_second_round_effects()
-
+        logging.debug('main_second_round_effects')
         # Undercapitalized banks undertake risk_weight optimization
         self.main_risk_weight_optimization()
-
+        logging.debug('main_risk_weight_optimization')
         # banks that are well capitalized pay dividends
         self.main_pay_dividends()
-
+        logging.debug('main_pay_dividends')
         # Reset insolvent loans, i.e. rebirth lending opportunity
         self.main_reset_insolvent_loans()
-
+        logging.debug('main_reset_insolvent_loans')
         # Build up loan book with loans available in bank neighborhood
         self.main_build_loan_book_locally()
-
+        logging.debug('main_build_loan_book_locally')
         # Build up loan book with loans available in other neighborhoods
         self.main_build_loan_book_globally()
-
+        logging.debug('main_build_loan_book_globally')
         # main_raise_deposits_build_loan_book
         # Evaluate liquidity needs related to reserves requirements
         self.main_evaluate_liquidity()
-
+        logging.debug('main_evaluate_liquidity')
         self.main_write_bank_ratios()
         self.main_write_interbank_links()
 
