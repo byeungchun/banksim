@@ -735,7 +735,7 @@ class MesaAbba(Model):
             self.lst_ibloan.append([ibloan.ib_creditor, ibloan.ib_debtor, ibloan.ib_amount])
 
     def __init__(self, height=20, width=20, initial_saver=10000, initial_loan=20000, initial_bank=10,
-                 rfree=0.01, car=0.08, min_reserves_ratio=0.03):
+                 rfree=0.01, car=0.08, min_reserves_ratio=0.03, initial_equity = 100):
         super().__init__()
         self.height = height
         self.width = width
@@ -748,6 +748,7 @@ class MesaAbba(Model):
         self.bankrupt_liquidation = 1  # 1: it is fire sale of assets, 0: bank liquidates loans at face value
         self.car = car
         self.min_reserves_ratio = min_reserves_ratio
+        self.initial_equity = initial_equity
         self.G = nx.empty_graph(self.initial_bank)
         self.grid = NetworkGrid(self.G)
         self.schedule = RandomActivation(self)
@@ -757,7 +758,7 @@ class MesaAbba(Model):
         })
 
         for i in range(self.initial_bank):
-            bank = Bank(self.next_id(), self, rfree=self.rfree, car=self.car)
+            bank = Bank(self.next_id(), self, rfree=self.rfree, car=self.car, equity=self.initial_equity)
             self.grid.place_agent(bank, i)
             self.schedule.add(bank)
 
@@ -776,9 +777,6 @@ class MesaAbba(Model):
 
         self.initialize_deposit_base()
         self.initialize_loan_book()
-
-        print([[round(x.bank_reserves), round(x.equity), round(x.bank_deposits), round(x.reserves_ratio,3)] for x in self.schedule.agents if
-               isinstance(x, Bank)])
 
         self.running = True
         self.datacollector.collect(self)
@@ -819,9 +817,11 @@ class MesaAbba(Model):
 
     def run_model(self, step_count=20):
         for i in range(step_count):
-            print('STEP: ' + str(i) + ' - # Solvent: ' + str(len([x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent])))
+            if i % 10 == 0 or (i+1) == step_count:
+                print(" STEP{0:1d} - # of sovent bank: {1:2d}".format(i, len([x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent])))
             self.step()
             if len([x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]) == 0:
+                logging.info("All banks are bankrupt!")
                 break
-        return pd.DataFrame(self.lst_bank_ratio)
+        return pd.DataFrame(self.lst_bank_ratio), pd.DataFrame(self.lst_ibloan)
 
