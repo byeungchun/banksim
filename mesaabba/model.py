@@ -16,6 +16,9 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 def get_num_agents(model):
     return len([a for a in model.schedule.agents])
 
+def get_sum_totasset(model):
+    return sum([x.total_assets for x in model.schedule.agents if isinstance(x, Bank)])
+
 
 class MesaAbba(Model):
     height = None
@@ -322,6 +325,7 @@ class MesaAbba(Model):
 
         for ibloan in [x for x in self.schedule.agents if isinstance(x, Ibloan)]:
             self.schedule.remove(ibloan)
+            self.G.remove_edge(ibloan.ib_creditor.pos, ibloan.ib_debtor.pos)
 
     def main_risk_weight_optimization(self):
         for uncap_bank in [x for x in self.schedule.agents if
@@ -642,6 +646,7 @@ class MesaAbba(Model):
             ibloan.ib_amount = liquidity_contribution
             ibloan.ib_debtor = bank
             self.schedule.add(ibloan)
+            self.G.add_edge(ibloan.ib_creditor.pos, ibloan.ib_debtor.pos)
             # TO DO: change color Red
             # TO DO: set line to thickness 3
 
@@ -754,8 +759,7 @@ class MesaAbba(Model):
         self.grid = NetworkGrid(self.G)
         self.schedule = RandomActivation(self)
         self.datacollector = DataCollector({
-            "Saver": get_num_agents,
-            "Bank": get_num_agents
+            "BankAsset": get_sum_totasset
         })
 
         for i in range(self.initial_bank):
