@@ -641,6 +641,7 @@ class MesaAbba(Model):
             ibloan.ib_creditor = liq_bank
             ibloan.ib_amount = liquidity_contribution
             ibloan.ib_debtor = bank
+            self.schedule.add(ibloan)
             # TO DO: change color Red
             # TO DO: set line to thickness 3
 
@@ -732,7 +733,7 @@ class MesaAbba(Model):
 
     def main_write_interbank_links(self):
         for ibloan in [x for x in self.schedule.agents if isinstance(x, Ibloan)]:
-            self.lst_ibloan.append([ibloan.ib_creditor, ibloan.ib_debtor, ibloan.ib_amount])
+            self.lst_ibloan.append([ibloan.ib_creditor.pos, ibloan.ib_debtor.pos, ibloan.ib_amount])
 
     def __init__(self, height=20, width=20, initial_saver=10000, initial_loan=20000, initial_bank=10,
                  rfree=0.01, car=0.08, min_reserves_ratio=0.03, initial_equity = 100):
@@ -823,5 +824,12 @@ class MesaAbba(Model):
             if len([x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]) == 0:
                 logging.info("All banks are bankrupt!")
                 break
-        return pd.DataFrame(self.lst_bank_ratio), pd.DataFrame(self.lst_ibloan)
+        df_bank = pd.DataFrame(self.lst_bank_ratio)
+        df_ibloan = pd.DataFrame(self.lst_ibloan)
+        df_bank.columns = ['car','minReservesRatio','capitalRatio','reservesRatio','leverageRatio','upperReservesRatio',
+                           'bufferReservesRatio','bankDividend','bankCumDividend','bankLoans','bankReserves',
+                           'bankDeposits','equity','totalAssets','rwassets','creditFailure','liquidityFailure']
+        df_ibloan.columns = ['ibCreditor','ibDebtor','ibAmount']
+        return df_bank, df_ibloan
+
 
