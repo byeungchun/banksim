@@ -10,7 +10,7 @@ def mesa_abba_network_portrayal(G):
     portrayal['nodes'] = [{'id': node_id,
                            'size': 3,
                            'color': '#CC0000',
-                           'label': 'Agent:{}'.format(node_id),
+                           'label': 'Bank{}'.format(node_id),
                            }
                           for node_id in G.node]
 
@@ -24,11 +24,14 @@ def mesa_abba_network_portrayal(G):
     return portrayal
 
 
-canvas_network = NetworkModule(mesa_abba_network_portrayal, 400, 400, library='sigma')
-chart_element = ChartModule([{"Label":"Saver","Color":"#AA0000"},
-                             {"Label":"Bank", "Color": "#666666"}])
+canvas_network = NetworkModule(mesa_abba_network_portrayal, 500, 600, library='sigma')
+chart_element = ChartModule([{"Label":"BankAsset","Color":"#AA0000"}])
 
-model_params = {"initial_saver": UserSettableParameter("slider", "Initial Saver", 10000, 1, 20000)}
+model_params = {"initial_saver": UserSettableParameter("slider", "# of Saver", 10000, 10000, 20000, 100),
+                "initial_bank": UserSettableParameter("slider", "# of Bank", 10, 10, 20, 1),
+                "initial_loan": UserSettableParameter("slider", "# of Loan", 20000, 10000, 30000,100),
+                "initial_equity": UserSettableParameter("slider", "Initial Equity of Bank", 100, 100, 200,1),
+                "car": UserSettableParameter("slider", "Min capital adequacy ratio", 0.08, 0.01, 0.10, 0.01)}
 
-server = ModularServer(MesaAbba, [canvas_network, chart_element], "Mesa ABBA model", model_params)
+server = ModularServer(MesaAbba, [canvas_network, chart_element], "ABBA - Banking system simulation", model_params)
 server.port = 8521
