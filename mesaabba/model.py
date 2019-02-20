@@ -9,8 +9,10 @@ import numpy as np
 import networkx as nx
 import pandas as pd
 
-from mesaabba.agents import Saver, Ibloan, Bank
-from mesaabba.agent.Loan import Loan
+from mesaabba.agent.saver import Saver
+from mesaabba.agent.ibloan import Ibloan
+from mesaabba.agent.bank import Bank
+from mesaabba.agent.loan import Loan
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
