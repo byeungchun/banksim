@@ -318,8 +318,9 @@ class MesaAbba(Model):
             if len(solvent_banks) != len(set(solvent_banks_afterwards).intersection(solvent_banks)):
                 solvent_banks = solvent_banks_afterwards
                 solvent_banks_afterwards = list()
-
             logging.debug('while looping -end')
+
+        # Question: Why all banks should initialize inter-bank related variables? Bank might lose their equity without reason
         for bank in [x for x in self.schedule.agents if isinstance(x, Bank)]:
             bank.initialize_ib_variables()
 
