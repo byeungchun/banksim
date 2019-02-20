@@ -9,7 +9,8 @@ import numpy as np
 import networkx as nx
 import pandas as pd
 
-from mesaabba.agents import Saver, Ibloan, Loan, Bank
+from mesaabba.agents import Saver, Ibloan, Bank
+from mesaabba.agent.Loan import Loan
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
