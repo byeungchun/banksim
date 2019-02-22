@@ -2,7 +2,7 @@ from mesa.visualization.ModularVisualization import ModularServer
 from mesa.visualization.modules import CanvasGrid, ChartModule, NetworkModule
 from mesa.visualization.UserParam import UserSettableParameter
 
-from mesaabba.model import MesaAbba
+from banksim.model import MesaAbba
 
 
 def mesa_abba_network_portrayal(G):

@@ -7,22 +7,22 @@ import logging
 import random
 import networkx as nx
 
-from mesaabba.agent.saver import Saver
-from mesaabba.agent.bank import Bank
-from mesaabba.agent.loan import Loan
-from mesaabba.bankingsystem.f1_init_market import initialize_deposit_base
-from mesaabba.bankingsystem.f1_init_market import initialize_loan_book
-from mesaabba.bankingsystem.f2_eval_solvency import main_evaluate_solvency
-from mesaabba.bankingsystem.f3_second_round_effect import main_second_round_effects
-from mesaabba.bankingsystem.f4_optimize_risk_weight import main_risk_weight_optimization
-from mesaabba.bankingsystem.f5_pay_dividends import main_pay_dividends
-from mesaabba.bankingsystem.f6_expand_loan_book import main_reset_insolvent_loans
-from mesaabba.bankingsystem.f6_expand_loan_book import main_build_loan_book_locally
-from mesaabba.bankingsystem.f6_expand_loan_book import main_build_loan_book_globally
-from mesaabba.bankingsystem.f7_eval_liquidity import main_evaluate_liquidity
-from mesaabba.util.write_agent_activity import main_write_bank_ratios
-from mesaabba.util.write_agent_activity import convert_result2dataframe
-from mesaabba.util.write_agent_activity import main_write_interbank_links
+from banksim.agent.saver import Saver
+from banksim.agent.bank import Bank
+from banksim.agent.loan import Loan
+from banksim.bankingsystem.f1_init_market import initialize_deposit_base
+from banksim.bankingsystem.f1_init_market import initialize_loan_book
+from banksim.bankingsystem.f2_eval_solvency import main_evaluate_solvency
+from banksim.bankingsystem.f3_second_round_effect import main_second_round_effects
+from banksim.bankingsystem.f4_optimize_risk_weight import main_risk_weight_optimization
+from banksim.bankingsystem.f5_pay_dividends import main_pay_dividends
+from banksim.bankingsystem.f6_expand_loan_book import main_reset_insolvent_loans
+from banksim.bankingsystem.f6_expand_loan_book import main_build_loan_book_locally
+from banksim.bankingsystem.f6_expand_loan_book import main_build_loan_book_globally
+from banksim.bankingsystem.f7_eval_liquidity import main_evaluate_liquidity
+from banksim.util.write_agent_activity import main_write_bank_ratios
+from banksim.util.write_agent_activity import convert_result2dataframe
+from banksim.util.write_agent_activity import main_write_interbank_links
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 

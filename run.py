@@ -1,3 +1,3 @@
-from mesaabba.server import server
+from banksim.server import server
 
 server.launch()
