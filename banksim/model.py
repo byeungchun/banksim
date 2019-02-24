@@ -31,7 +31,7 @@ def get_sum_totasset(model):
     return sum([x.total_assets for x in model.schedule.agents if isinstance(x, Bank)])
 
 
-class MesaAbba(Model):
+class BankSim(Model):
     height = None
     width = None
     initial_saver = None

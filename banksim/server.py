@@ -2,7 +2,7 @@ from mesa.visualization.ModularVisualization import ModularServer
 from mesa.visualization.modules import CanvasGrid, ChartModule, NetworkModule
 from mesa.visualization.UserParam import UserSettableParameter
 
-from banksim.model import MesaAbba
+from banksim.model import BankSim
 
 
 def mesa_abba_network_portrayal(G):
@@ -33,5 +33,5 @@ model_params = {"initial_saver": UserSettableParameter("slider", "# of Saver", 1
                 "initial_equity": UserSettableParameter("slider", "Initial Equity of Bank", 100, 100, 200,1),
                 "car": UserSettableParameter("slider", "Min capital adequacy ratio", 0.08, 0.01, 0.10, 0.01)}
 
-server = ModularServer(MesaAbba, [canvas_network, chart_element], "ABBA - Banking system simulation", model_params)
+server = ModularServer(BankSim, [canvas_network, chart_element], "ABBA - Banking system simulation", model_params)
 server.port = 8521
