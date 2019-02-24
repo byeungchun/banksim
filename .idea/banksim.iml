@@ -7,8 +7,9 @@
       <sourceFolder url="file://$MODULE_DIR$/examples/Schelling" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/examples/wolf_sheep" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/examples/boltzmann_wealth_model_network" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/venv" />
     </content>
-    <orderEntry type="inheritedJdk" />
+    <orderEntry type="jdk" jdkName="Python 3.6 (banksim)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="TestRunnerService">
