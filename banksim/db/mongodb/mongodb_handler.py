@@ -8,6 +8,8 @@ class MongoDBHandler(DBHandler):
     """
     PyMongo wrapper
     local - local database, remote - remote database
+    
+    Original source code: https://gitlab.com/hyunny88/auto-trading/tree/master/autotrading/db
     """
     def __init__(self, mode="local", db_name=None, collection_name=None):
         """
