@@ -14,15 +14,15 @@
 /****************************************************************
 	Drop Tables
 *****************************************************************/
-DROP TABLE IF EXISTS [Simulation]
+DROP TABLE IF EXISTS [Simulation];
 
-DROP TABLE IF EXISTS [AgtBank]
+DROP TABLE IF EXISTS [AgtBank];
 
-DROP TABLE IF EXISTS [AgtSaver]
+DROP TABLE IF EXISTS [AgtSaver];
 
-DROP TABLE IF EXISTS [AgtLoan]
+DROP TABLE IF EXISTS [AgtLoan];
 
-DROP TABLE IF EXISTS [AgtIbLoan]
+DROP TABLE IF EXISTS [AgtIbLoan];
 
 
 /****************************************************************
