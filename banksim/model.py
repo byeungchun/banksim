@@ -3,6 +3,7 @@ from mesa.space import NetworkGrid
 from mesa.time import RandomActivation
 from mesa.datacollection import DataCollector
 
+import sqlite3
 import logging
 import random
 import networkx as nx
@@ -45,6 +46,12 @@ class BankSim(Model):
     lst_bank_ratio = list()
     lst_ibloan = list()
 
+    @staticmethod
+    def init_database(self):
+        con = sqlite3.connect('result.db')
+        fin = open('conf/banksim_sqlite.sql', 'r')
+        con.executescript(fin.read())
+
     def __init__(self, height=20, width=20, initial_saver=10000, initial_loan=20000, initial_bank=10,
                  rfree=0.01, car=0.08, min_reserves_ratio=0.03, initial_equity = 100):
         super().__init__()
@@ -66,6 +73,7 @@ class BankSim(Model):
         self.datacollector = DataCollector({
             "BankAsset": get_sum_totasset
         })
+        BankSim.init_database(self)
 
         for i in range(self.initial_bank):
             bank = Bank(self.next_id(), self, rfree=self.rfree, car=self.car, equity=self.initial_equity)
