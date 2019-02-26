@@ -2,12 +2,15 @@ from mesa import Model
 from mesa.space import NetworkGrid
 from mesa.time import RandomActivation
 from mesa.datacollection import DataCollector
-
+from datetime import datetime, timezone
+import os, traceback
 import sqlite3
 import logging
 import random
 import networkx as nx
 
+import configparser
+from banksim.logger import get_logger
 from banksim.agent.saver import Saver
 from banksim.agent.bank import Bank
 from banksim.agent.loan import Loan
@@ -24,8 +27,10 @@ from banksim.bankingsystem.f7_eval_liquidity import main_evaluate_liquidity
 from banksim.util.write_agent_activity import main_write_bank_ratios
 from banksim.util.write_agent_activity import convert_result2dataframe
 from banksim.util.write_agent_activity import main_write_interbank_links
+from banksim.util.write_sqlitedb import insert_simulation_table
 
-logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+#logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+logger = get_logger("model")
 
 
 def get_sum_totasset(model):
@@ -33,6 +38,9 @@ def get_sum_totasset(model):
 
 
 class BankSim(Model):
+    config = configparser.ConfigParser()
+    config.read('conf/config.ini')
+    sqlite_db = config['SQLITEDB']['file']
     height = None
     width = None
     initial_saver = None
@@ -42,15 +50,24 @@ class BankSim(Model):
     car = None  # Capital Requirement
     libor_rate = None
     min_reserves_ratio = None
-
+    conn = None # Sqlite connector
+    db_cursor = None # Sqlite DB cursor
     lst_bank_ratio = list()
     lst_ibloan = list()
 
-    @staticmethod
     def init_database(self):
-        con = sqlite3.connect('result.db')
-        fin = open('conf/banksim_sqlite.sql', 'r')
-        con.executescript(fin.read())
+        try:
+            conn = sqlite3.connect(self.sqlite_db)
+            db_cursor = conn.cursor()
+            fin = open('conf/banksim_sqlite.sql', 'r')
+            db_cursor.executescript(fin.read())
+            conn.commit()
+        except:
+            raise Exception("SQLite DB init error")
+        finally:
+            db_cursor.close()
+            conn.close()
+
 
     def __init__(self, height=20, width=20, initial_saver=10000, initial_loan=20000, initial_bank=10,
                  rfree=0.01, car=0.08, min_reserves_ratio=0.03, initial_equity = 100):
@@ -73,7 +90,10 @@ class BankSim(Model):
         self.datacollector = DataCollector({
             "BankAsset": get_sum_totasset
         })
-        BankSim.init_database(self)
+
+        if not os.path.isfile(self.sqlite_db):
+            self.init_database()
+            logger.info('db initialization')
 
         for i in range(self.initial_bank):
             bank = Bank(self.next_id(), self, rfree=self.rfree, car=self.car, equity=self.initial_equity)
@@ -99,6 +119,12 @@ class BankSim(Model):
         self.datacollector.collect(self)
 
     def step(self):
+        if self.schedule.steps == 0:
+            self.conn = sqlite3.connect(self.sqlite_db)
+            self.db_cursor = self.conn.cursor()
+            task = (int(datetime.now().strftime('%Y%m%d%H%M%S')), 'test', datetime.now(timezone.utc))
+            insert_simulation_table(self.db_cursor, task)
+
 
         # evaluate solvency of banks after loans experience default
         main_evaluate_solvency(self.schedule, self.reserve_rates, self.bankrupt_liquidation, self.car)
@@ -129,16 +155,26 @@ class BankSim(Model):
         main_write_bank_ratios(self.schedule, self.lst_bank_ratio, self.car, self.min_reserves_ratio)
         main_write_interbank_links(self.schedule, self.lst_ibloan)
 
+        self.conn.commit()
         self.schedule.step()
         self.datacollector.collect(self)
 
     def run_model(self, step_count=20):
+        """
+        This method is only avail in the command mode
+        :param step_count:
+        :return:
+        """
         for i in range(step_count):
             if i % 10 == 0 or (i+1) == step_count:
                 print(" STEP{0:1d} - # of sovent bank: {1:2d}".format(i, len([x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent])))
-            self.step()
+            try:
+                self.step()
+            except:
+                error = traceback.format_exc()
+                logger.info(error)
             if len([x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]) == 0:
-                logging.info("All banks are bankrupt!")
+                logger.info("All banks are bankrupt!")
                 break
         df_bank, df_ibloan = convert_result2dataframe(self.lst_bank_ratio, self.lst_ibloan)
         return df_bank, df_ibloan
