@@ -81,6 +81,7 @@ CREATE TABLE [AgtSaver]
 	[AgtSaverId] INTEGER NOT NULL,
 	[SimId] INTEGER NOT NULL,
 	[StepCnt] INTEGER NOT NULL,
+	[SaverId] INTEGER NOT NULL,
 	[SaverBalance] REAL, 				-- balance = None  # deposit balance with bank
 	[SaverWithdrawProb] REAL, 			-- withdraw_prob = None  # probability of withdrawing deposit and shift to other bank 
 	[SaverExitProb] REAL, 				-- exit_prob = None  # probability that saver withdraws and exits banking system
@@ -101,6 +102,7 @@ CREATE TABLE [AgtLoan]
 	[AgtLoanId] INTEGER NOT NULL,
 	[SimId] INTEGER NOT NULL,
 	[StepCnt] INTEGER NOT NULL,
+	[LoanId] INTEGER NOT NULL,
 	[LoanProbDefault] REAL NOT NULL,-- pdef = None  # true probability of default
 	[LoanAmount] REAL NOT NULL, 	-- amount = None  # amount of loan - set to unity
 	[LoanRiskWgt] REAL NOT NULL, 	-- rweight = None  # true risk-weight of the loan
@@ -131,6 +133,7 @@ CREATE TABLE [AgtIbLoan]
 	[AgtIbLoanId] INTEGER NOT NULL,
 	[SimId] INTEGER NOT NULL,
 	[StepCnt] INTEGER NOT NULL,
+	[IbLoanId] INTEGER NOT NULL,
 	[IbLoanRate] REAL NOT NULL, 	-- ib_rate = None  # interbank loan rate
 	[IbLoanAmount] REAL NOT NULL, 	-- ib_amount = None  # intferbank amount
 	[IbLoanCreditor] REAL NOT NULL, -- ib_creditor = None
