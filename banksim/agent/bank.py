@@ -102,5 +102,43 @@ class Bank(Agent):
         self.ib_net_interest_income = 0
         self.ib_credit_loss = 0
 
+    def get_all_variables(self):
+        res =[
+            '', # AgtBankId
+            '', # SimId
+            '', # StepCnt
+            self.unique_id,  # BankId
+            self.equity,
+            self.bank_deposits,
+            self.bank_loans,
+            self.bank_reserves,
+            self.total_assets,
+            self.bank_provisions,
+            self.bank_new_provisions,
+            self.bank_deposits,
+            self.ib_credits,
+            self.ib_debits,
+            self.net_interest_income,
+            self.interest_income,
+            self.interest_expense,
+            self.ib_interest_income,
+            self.ib_interest_expense,
+            self.ib_net_interest_income,
+            self.ib_credit_loss,
+            self.rwassets,
+            self.bank_dividend,
+            self.bank_cum_dividend,
+            self.deposit_outflow,
+            self.deposit_inflow,
+            self.net_deposit_flow,
+            self.defaulted_loans,
+            int(self.bank_solvent),
+            int(self.bank_capitalized),
+            int(self.credit_failure),
+            int(self.liquidity_failure),
+            '' # Datetime
+        ]
+        return res
+
     # def step(self):
     #     print('Bank step')

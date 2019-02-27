@@ -27,7 +27,7 @@ from banksim.bankingsystem.f7_eval_liquidity import main_evaluate_liquidity
 from banksim.util.write_agent_activity import main_write_bank_ratios
 from banksim.util.write_agent_activity import convert_result2dataframe
 from banksim.util.write_agent_activity import main_write_interbank_links
-from banksim.util.write_sqlitedb import insert_simulation_table
+from banksim.util.write_sqlitedb import insert_simulation_table, insert_agtbank_table
 
 #logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 logger = get_logger("model")
@@ -41,6 +41,8 @@ class BankSim(Model):
     config = configparser.ConfigParser()
     config.read('conf/config.ini')
     sqlite_db = config['SQLITEDB']['file']
+    db_init_query = config['SQLITEDB']['init_query']
+    simid = None #Simulation ID for SQLITEDB primary key
     height = None
     width = None
     initial_saver = None
@@ -59,7 +61,7 @@ class BankSim(Model):
         try:
             conn = sqlite3.connect(self.sqlite_db)
             db_cursor = conn.cursor()
-            fin = open('conf/banksim_sqlite.sql', 'r')
+            fin = open(self.db_init_query, 'r')
             db_cursor.executescript(fin.read())
             conn.commit()
         except:
@@ -122,7 +124,8 @@ class BankSim(Model):
         if self.schedule.steps == 0:
             self.conn = sqlite3.connect(self.sqlite_db)
             self.db_cursor = self.conn.cursor()
-            task = (int(datetime.now().strftime('%Y%m%d%H%M%S')), 'test', datetime.now(timezone.utc))
+            self.simid = int(datetime.now().strftime('%Y%m%d%H%M%S'))
+            task = (self.simid, 'test', datetime.now(timezone.utc))
             insert_simulation_table(self.db_cursor, task)
 
 
@@ -154,6 +157,9 @@ class BankSim(Model):
 
         main_write_bank_ratios(self.schedule, self.lst_bank_ratio, self.car, self.min_reserves_ratio)
         main_write_interbank_links(self.schedule, self.lst_ibloan)
+
+        # Insert agent variables of current step into SQLITEDB
+        insert_agtbank_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x,Bank)])
 
         self.conn.commit()
         self.schedule.step()
