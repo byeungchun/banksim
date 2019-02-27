@@ -38,3 +38,27 @@ def insert_agtbank_table(cursor, simid, numstep, banks):
         cursor.execute(sql, tuple(bank_vars))
 
     return cursor.lastrowid
+
+
+def insert_agtsaver_table(cursor, simid, numstep, savers):
+    """
+
+    :param cursor:
+    :param simid:
+    :param numstep:
+    :param savers:
+    :return:
+    """
+    sql = '''INSERT INTO AgtSaver(AgtSaverId,SimId,StepCnt,SaverId,SaverBalance,SaverWithdrawProb,SaverExitProb,SaverBankId,
+    SaverRegionId,SaverOwnAccount,SaverSolvent,SaverExit,SaverCurrent,SaverStepDate) Values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)'''
+
+    col_date = datetime.now(timezone.utc)
+    for saver in savers:
+        saver_vars = saver.get_all_variables()
+        saver_vars[0] = int(str(10000+numstep)+str(10000+saver_vars[3])) # AgtSaverId
+        saver_vars[1] = simid
+        saver_vars[2] = numstep
+        saver_vars[13] = col_date
+        cursor.execute(sql,tuple(saver_vars))
+
+    return cursor.lastrowid
