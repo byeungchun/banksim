@@ -25,3 +25,22 @@ class Saver(Agent):
         self.exit_prob = np.random.randint(0, 6) / 100.0
         self.saver_exit = saver_exit
         self.saver_last_color = saver_last_color
+
+    def get_all_variables(self):
+        res = [
+            '',  # AgtSaverId
+            '',  # SimId
+            '',  # StepCnt
+            self.unique_id,
+            self.balance,
+            self.withdraw_prob,
+            self.exit_prob,
+            self.bank_id,
+            self.region_id,
+            self.owns_account,
+            self.saver_solvent,
+            self.saver_exit,
+            self.saver_current,
+            '' # Datetime
+        ]
+        return res
