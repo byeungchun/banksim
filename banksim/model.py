@@ -27,7 +27,7 @@ from banksim.bankingsystem.f7_eval_liquidity import main_evaluate_liquidity
 from banksim.util.write_agent_activity import main_write_bank_ratios
 from banksim.util.write_agent_activity import convert_result2dataframe
 from banksim.util.write_agent_activity import main_write_interbank_links
-from banksim.util.write_sqlitedb import insert_simulation_table, insert_agtbank_table
+from banksim.util.write_sqlitedb import insert_simulation_table, insert_agtbank_table, insert_agtsaver_table
 
 #logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 logger = get_logger("model")
@@ -160,6 +160,7 @@ class BankSim(Model):
 
         # Insert agent variables of current step into SQLITEDB
         insert_agtbank_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x,Bank)])
+        insert_agtsaver_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x, Saver)])
 
         self.conn.commit()
         self.schedule.step()
