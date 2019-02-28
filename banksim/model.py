@@ -61,18 +61,17 @@ class BankSim(Model):
 
         if os.path.isfile(self.sqlite_db):
             compression = zipfile.ZIP_DEFLATED
-            zf = zipfile.ZipFile(self.sqlite_db + datetime.now().strftime('%Y%m%d%H%M') + '.zip', 'w')
-            try:
-                zf.write(self.sqlite_db, compress_type=compression)
-            except:
-                raise Exception("SQLITE DB file compression error")
-            finally:
-                zf.close()
-
+            with zipfile.ZipFile(self.sqlite_db + datetime.now().strftime('%Y%m%d%H%M') + '.zip', 'w') as zf:
+                try:
+                    zf.write(self.sqlite_db, compress_type=compression)
+                except:
+                    raise Exception("SQLITE DB file compression error")
+                finally:
+                    zf.close()
+                    zf = None
+                    os.remove(self.sqlite_db)
 
         try:
-            zf = None
-            os.remove(self.sqlite_db)
             conn = sqlite3.connect(self.sqlite_db)
             db_cursor = conn.cursor()
             fin = open(self.db_init_query, 'r')
