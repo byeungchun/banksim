@@ -62,3 +62,55 @@ def insert_agtsaver_table(cursor, simid, numstep, savers):
         cursor.execute(sql,tuple(saver_vars))
 
     return cursor.lastrowid
+
+
+def insert_agtloan_table(cursor, simid, numstep, loans):
+    """
+
+    :param cursor:
+    :param simid:
+    :param numstep:
+    :param loans:
+    :return:
+    """
+
+    sql = '''INSERT INTO AgtLoan(AgtLoanId,SimId,StepCnt,LoanId,LoanProbDefault,LoanAmount,LoanRiskWgt,LoanRiskWgtAmt,
+    LoanLgdAmt,LoanRecovery,LoanRcvryRate,LoanFireSaleLoss,LoanRating,LoanRateQuote,LoanRateReservation,LoanPlusRate,
+    LoanInterestPymt,LoanRegionId,LoanApproved,LoanSolvent,LoanDumped,LoanLiquidated,LoanBankId,LoanStepDate) 
+    Values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'''
+
+    col_date = datetime.now(timezone.utc)
+    for loan in loans:
+        loan_vars = loan.get_all_variables()
+        loan_vars[0] = int(str(10000 + numstep) + str(10000 + loan_vars[3]))  # AgtloanId
+        loan_vars[1] = simid
+        loan_vars[2] = numstep
+        loan_vars[-1] = col_date
+        cursor.execute(sql, tuple(loan_vars))
+
+    return cursor.lastrowid
+
+
+def insert_agtibloan_table(cursor, simid, numstep, ibloans):
+    """
+
+    :param cursor:
+    :param simid:
+    :param numstep:
+    :param ibloans:
+    :return:
+    """
+
+    sql = '''INSERT INTO AgtIbLoan(AgtIbLoanId,SimId,StepCnt,IbLoanId,IbLoanRate,IbLoanAmount,IbLoanCreditor,
+    IbLoanDebtor,IbLoanStepDate) Values(?,?,?,?,?,?,?,?,?)'''
+
+    col_date = datetime.now(timezone.utc)
+    for loan in ibloans:
+        loan_vars = loan.get_all_variables()
+        loan_vars[0] = int(str(10000 + numstep) + str(10000 + loan_vars[3]))  # AgtloanId
+        loan_vars[1] = simid
+        loan_vars[2] = numstep
+        loan_vars[-1] = col_date
+        cursor.execute(sql, tuple(loan_vars))
+
+    return cursor.lastrowid

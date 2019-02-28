@@ -37,10 +37,10 @@ class Saver(Agent):
             self.exit_prob,
             self.bank_id,
             self.region_id,
-            self.owns_account,
-            self.saver_solvent,
-            self.saver_exit,
-            self.saver_current,
+            self.owns_account if self.owns_account is None else int(self.owns_account),
+            self.saver_solvent if self.saver_solvent is None else int(self.saver_solvent),
+            self.saver_exit if self.saver_exit is None else int(self.saver_exit),
+            self.saver_current if self.saver_current is None else int(self.saver_current),
             '' # Datetime
         ]
         return res

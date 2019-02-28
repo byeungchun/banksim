@@ -71,7 +71,7 @@ CREATE TABLE [AgtBank]
 	[BankCreditFailure] INTEGER NOT NULL,	-- 1: TRUE, 0: False, credit_failure = None  # credit failure
 	[BankLiquidityFailure] INTEGER NOT NULL,-- 1: TRUE, 0: False, liquidity_failure = None  # liquidity failure
 	[BankStepDate] DATETIME NOT NULL,
-	CONSTRAINT [PK_AgtBank] PRIMARY KEY ([AgtBankId]),
+	CONSTRAINT [PK_AgtBank] PRIMARY KEY ([AgtBankId],[SimId]),
 	FOREIGN KEY ([SimId]) REFERENCES [Simulation] ([SimId])
 				ON DELETE NO ACTION ON UPDATE NO ACTION
 );
@@ -92,7 +92,7 @@ CREATE TABLE [AgtSaver]
 	[SaverExit] INTEGER,				-- 1: TRUE, 0: False, saver_exit = None  # saver exits the banking system?
 	[SaverCurrent] INTEGER,				-- 1: TRUE, 0: False, saver_current = None  # old saver/ if false, it is a new entrant to the system
 	[SaverStepDate] DATETIME NOT NULL,
-	CONSTRAINT [PK_AgtSaver] PRIMARY KEY ([AgtSaverId]),
+	CONSTRAINT [PK_AgtSaver] PRIMARY KEY ([AgtSaverId],[SimId]),
 	FOREIGN KEY ([SimId]) REFERENCES [Simulation] ([SimId])
 				ON DELETE NO ACTION ON UPDATE NO ACTION 
 );
@@ -123,7 +123,7 @@ CREATE TABLE [AgtLoan]
 	[LoanLiquidated] INTEGER,		-- 1: TRUE, 0: False, loan_liquidated = None  # loan liquidated owing to bank-bankruptcy
 	[LoanBankId] INTEGER,			-- 1: TRUE, 0: False, bank_id = None  # identity of lending bank
 	[LoanStepDate] DATETIME NOT NULL,
-	CONSTRAINT [PK_AgtLoan] PRIMARY KEY ([AgtLoanId]),
+	CONSTRAINT [PK_AgtLoan] PRIMARY KEY ([AgtLoanId],[SimId]),
 	FOREIGN KEY ([SimId]) REFERENCES [Simulation] ([SimId])
 				ON DELETE NO ACTION ON UPDATE NO ACTION 
 );
@@ -136,10 +136,10 @@ CREATE TABLE [AgtIbLoan]
 	[IbLoanId] INTEGER NOT NULL,
 	[IbLoanRate] REAL NOT NULL, 	-- ib_rate = None  # interbank loan rate
 	[IbLoanAmount] REAL NOT NULL, 	-- ib_amount = None  # intferbank amount
-	[IbLoanCreditor] REAL NOT NULL, -- ib_creditor = None
-	[IbLoanDebtor] REAL NOT NULL, 	-- ib_debtor = None
+	[IbLoanCreditor] INTEGER NOT NULL, -- ib_creditor unique id
+	[IbLoanDebtor] INTEGER NOT NULL, 	-- ib_debtor unique id
 	[IbLoanStepDate] DATETIME NOT NULL,
-	CONSTRAINT [PK_AgtIbLoan] PRIMARY KEY ([AgtIbLoanId]),
+	CONSTRAINT [PK_AgtIbLoan] PRIMARY KEY ([AgtIbLoanId],[SimId]),
 	FOREIGN KEY ([SimId]) REFERENCES [Simulation] ([SimId])
 				ON DELETE NO ACTION ON UPDATE NO ACTION 
 );

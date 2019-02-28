@@ -1,7 +1,7 @@
 import logging
 import random
 
-import numpy
+import numpy as np
 
 from banksim.agent.bank import Bank
 from banksim.agent.loan import Loan

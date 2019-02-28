@@ -42,3 +42,32 @@ class Loan(Agent):
         self.interest_payment = self.rate_quote * self.amount
         self.rwamount = self.rweight * self.amount
         self.fire_sale_loss = np.random.randint(0, 11) / 100
+
+    def get_all_variables(self):
+        res = [
+            '',  # AgtSaverId
+            '',  # SimId
+            '',  # StepCnt
+            self.unique_id,
+            self.pdef,
+            self.amount,
+            self.rweight,
+            self.rwamount,
+            self.lgdamount,
+            self.loan_recovery,
+            self.rcvry_rate,
+            self.fire_sale_loss,
+            self.rating,
+            self.rate_quote,
+            self.rate_reservation,
+            self.loan_plus_rate,
+            self.interest_payment,
+            self.region_id,
+            self.loan_approved if self.loan_approved is None else int(self.loan_approved),
+            self.loan_solvent if self.loan_solvent is None else int(self.loan_solvent),
+            self.loan_dumped if self.loan_dumped is None else int(self.loan_dumped),
+            self.loan_liquidated if self.loan_liquidated is None else int(self.loan_liquidated),
+            self.bank_id if self.bank_id is None else int(self.bank_id),
+            '' # datetime
+        ]
+        return res

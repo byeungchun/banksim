@@ -12,3 +12,18 @@ class Ibloan(Agent):
         super().__init__(unique_id, model)
         self.ib_rate = libor_rate
         self.ib_amount = 0
+
+    def get_all_variables(self):
+        res = [
+            '',  # AgtSaverId
+            '',  # SimId
+            '',  # StepCnt
+            self.unique_id,
+            self.ib_rate,
+            self.ib_amount,
+            self.ib_creditor.unique_id,
+            self.ib_debtor.unique_id,
+            '' # datetime
+        ]
+
+        return res

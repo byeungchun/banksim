@@ -4,7 +4,6 @@ from banksim.agent.bank import Bank
 from banksim.agent.ibloan import Ibloan
 from banksim.bankingsystem.f2_eval_solvency import process_unwind_loans_insolvent_bank
 
-
 def calculate_interbank_credit_loss(schedule, solvent_bank):
     solvent_bank.ib_credit_loss = sum([x.ib_amount for x in schedule.agents if isinstance(x, Ibloan) and
                                        x.ib_creditor == solvent_bank and not x.ib_debtor.bank_solvent])
@@ -92,10 +91,10 @@ def main_second_round_effects(schedule, bankrupt_liquidation, car, G):
             solvent_banks_afterwards = list()
         logging.debug('while looping -end')
 
+    # To clear all ibloan activities
     # Question: Why all banks should initialize inter-bank related variables? Bank might lose their equity without reason
     for bank in [x for x in schedule.agents if isinstance(x, Bank)]:
         bank.initialize_ib_variables()
-
     for ibloan in [x for x in schedule.agents if isinstance(x, Ibloan)]:
         schedule.remove(ibloan)
         G.remove_edge(ibloan.ib_creditor.pos, ibloan.ib_debtor.pos)

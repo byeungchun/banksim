@@ -14,6 +14,7 @@ from banksim.logger import get_logger
 from banksim.agent.saver import Saver
 from banksim.agent.bank import Bank
 from banksim.agent.loan import Loan
+from banksim.agent.ibloan import Ibloan
 from banksim.bankingsystem.f1_init_market import initialize_deposit_base
 from banksim.bankingsystem.f1_init_market import initialize_loan_book
 from banksim.bankingsystem.f2_eval_solvency import main_evaluate_solvency
@@ -27,7 +28,8 @@ from banksim.bankingsystem.f7_eval_liquidity import main_evaluate_liquidity
 from banksim.util.write_agent_activity import main_write_bank_ratios
 from banksim.util.write_agent_activity import convert_result2dataframe
 from banksim.util.write_agent_activity import main_write_interbank_links
-from banksim.util.write_sqlitedb import insert_simulation_table, insert_agtbank_table, insert_agtsaver_table
+from banksim.util.write_sqlitedb import insert_simulation_table, insert_agtbank_table, insert_agtsaver_table, \
+    insert_agtloan_table, insert_agtibloan_table
 
 #logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 logger = get_logger("model")
@@ -132,6 +134,11 @@ class BankSim(Model):
         # evaluate solvency of banks after loans experience default
         main_evaluate_solvency(self.schedule, self.reserve_rates, self.bankrupt_liquidation, self.car)
 
+        # It needs to log before the 2nd round effect begin because the function initializes
+        insert_agtbank_table(self.db_cursor, self.simid, self.schedule.steps,
+                             [x for x in self.schedule.agents if isinstance(x, Bank)])
+        insert_agtibloan_table(self.db_cursor, self.simid, self.schedule.steps,
+                               [x for x in self.schedule.agents if isinstance(x, Ibloan)])
         # evaluate second round effects owing to cross_bank linkages
         # only interbank loans to cover shortages in reserves requirements are included
         main_second_round_effects(self.schedule, self.bankrupt_liquidation, self.car, self.G)
@@ -159,8 +166,9 @@ class BankSim(Model):
         main_write_interbank_links(self.schedule, self.lst_ibloan)
 
         # Insert agent variables of current step into SQLITEDB
-        insert_agtbank_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x,Bank)])
         insert_agtsaver_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x, Saver)])
+        insert_agtloan_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x, Loan)])
+
 
         self.conn.commit()
         self.schedule.step()

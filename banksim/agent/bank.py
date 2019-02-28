@@ -132,10 +132,10 @@ class Bank(Agent):
             self.deposit_inflow,
             self.net_deposit_flow,
             self.defaulted_loans,
-            int(self.bank_solvent),
-            int(self.bank_capitalized),
-            int(self.credit_failure),
-            int(self.liquidity_failure),
+            self.bank_solvent if self.bank_solvent is None else int(self.bank_solvent),
+            self.bank_capitalized if self.bank_capitalized is None else int(self.bank_capitalized),
+            self.credit_failure if self.credit_failure is None else int(self.credit_failure),
+            self.liquidity_failure if self.liquidity_failure is None else int(self.liquidity_failure),
             '' # Datetime
         ]
         return res
