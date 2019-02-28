@@ -53,6 +53,13 @@ class Bank(Agent):
     credit_failure = None  # credit failure
     liquidity_failure = None  # liquidity failure
     assets_liabilities = None  # control variable
+    # For Database logging
+    ib_credits_4log = None
+    ib_debits_4log = None
+    ib_interest_income_4log = None
+    ib_interest_expense_4log = None
+    ib_net_interest_income_4log = None
+    ib_credit_loss_4log = None
 
     def __init__(self, unique_id, model, equity=100, bank_deposits=0, bank_loans=0, bank_reserves=0, rfree=0,
                bank_solvent=True, defaulted_loans=0, bank_capitalized=True, bank_dividend=0, bank_cum_dividend=0,
@@ -95,6 +102,14 @@ class Bank(Agent):
         self.bank_deposits = self.bank_deposits + self.net_deposit_flow
 
     def initialize_ib_variables(self):
+
+        self.ib_credits_4log = self.ib_credits
+        self.ib_debits_4log = self.ib_debits
+        self.ib_interest_income_4log = self.ib_interest_income
+        self.ib_interest_expense_4log = self.ib_interest_expense
+        self.ib_net_interest_income_4log = self.ib_net_interest_income
+        self.ib_credit_loss_4log = self.ib_credit_loss
+
         self.ib_credits = 0
         self.ib_debits = 0
         self.ib_interest_income = 0
@@ -116,14 +131,14 @@ class Bank(Agent):
             self.bank_provisions,
             self.bank_new_provisions,
             self.bank_deposits,
-            self.ib_credits,
-            self.ib_debits,
+            self.ib_credits_4log,
+            self.ib_debits_4log,
             self.net_interest_income,
             self.interest_income,
             self.interest_expense,
-            self.ib_interest_income,
-            self.ib_interest_expense,
-            self.ib_net_interest_income,
+            self.ib_interest_income_4log,
+            self.ib_interest_expense_4log,
+            self.ib_net_interest_income_4log,
             self.ib_credit_loss,
             self.rwassets,
             self.bank_dividend,
