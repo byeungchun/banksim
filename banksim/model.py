@@ -3,10 +3,8 @@ from mesa.space import NetworkGrid
 from mesa.time import RandomActivation
 from mesa.datacollection import DataCollector
 from datetime import datetime, timezone
-import os, traceback
+import os, traceback, random, zipfile, zlib
 import sqlite3
-import logging
-import random
 import networkx as nx
 
 import configparser
@@ -31,7 +29,6 @@ from banksim.util.write_agent_activity import main_write_interbank_links
 from banksim.util.write_sqlitedb import insert_simulation_table, insert_agtbank_table, insert_agtsaver_table, \
     insert_agtloan_table, insert_agtibloan_table
 
-#logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 logger = get_logger("model")
 
 
@@ -45,6 +42,7 @@ class BankSim(Model):
     sqlite_db = config['SQLITEDB']['file']
     db_init_query = config['SQLITEDB']['init_query']
     simid = None #Simulation ID for SQLITEDB primary key
+    max_steps = 200
     height = None
     width = None
     initial_saver = None
@@ -60,7 +58,21 @@ class BankSim(Model):
     lst_ibloan = list()
 
     def init_database(self):
+
+        if os.path.isfile(self.sqlite_db):
+            compression = zipfile.ZIP_DEFLATED
+            zf = zipfile.ZipFile(self.sqlite_db + datetime.now().strftime('%Y%m%d%H%M') + '.zip', 'w')
+            try:
+                zf.write(self.sqlite_db, compress_type=compression)
+            except:
+                raise Exception("SQLITE DB file compression error")
+            finally:
+                zf.close()
+
+
         try:
+            zf = None
+            os.remove(self.sqlite_db)
             conn = sqlite3.connect(self.sqlite_db)
             db_cursor = conn.cursor()
             fin = open(self.db_init_query, 'r')
@@ -74,10 +86,11 @@ class BankSim(Model):
 
 
     def __init__(self, height=20, width=20, initial_saver=10000, initial_loan=20000, initial_bank=10,
-                 rfree=0.01, car=0.08, min_reserves_ratio=0.03, initial_equity = 100):
+                 rfree=0.01, car=0.08, min_reserves_ratio=0.03, initial_equity = 100, max_steps=200):
         super().__init__()
         self.height = height
         self.width = width
+        self.max_steps = max_steps
         self.initial_saver = initial_saver
         self.initial_loan = initial_loan
         self.initial_bank = initial_bank
@@ -95,9 +108,9 @@ class BankSim(Model):
             "BankAsset": get_sum_totasset
         })
 
-        if not os.path.isfile(self.sqlite_db):
-            self.init_database()
-            logger.info('db initialization')
+
+        self.init_database()
+        logger.info('db initialization')
 
         for i in range(self.initial_bank):
             bank = Bank(self.next_id(), self, rfree=self.rfree, car=self.car, equity=self.initial_equity)
@@ -130,15 +143,12 @@ class BankSim(Model):
             task = (self.simid, 'test', datetime.now(timezone.utc))
             insert_simulation_table(self.db_cursor, task)
 
+        if self.schedule.steps == self.max_steps:
+            self.running = False
 
         # evaluate solvency of banks after loans experience default
         main_evaluate_solvency(self.schedule, self.reserve_rates, self.bankrupt_liquidation, self.car)
 
-        # It needs to log before the 2nd round effect begin because the function initializes
-        insert_agtbank_table(self.db_cursor, self.simid, self.schedule.steps,
-                             [x for x in self.schedule.agents if isinstance(x, Bank)])
-        insert_agtibloan_table(self.db_cursor, self.simid, self.schedule.steps,
-                               [x for x in self.schedule.agents if isinstance(x, Ibloan)])
         # evaluate second round effects owing to cross_bank linkages
         # only interbank loans to cover shortages in reserves requirements are included
         main_second_round_effects(self.schedule, self.bankrupt_liquidation, self.car, self.G)
@@ -168,7 +178,11 @@ class BankSim(Model):
         # Insert agent variables of current step into SQLITEDB
         insert_agtsaver_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x, Saver)])
         insert_agtloan_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x, Loan)])
-
+        # It needs to log before the 2nd round effect begin because the function initializes
+        insert_agtbank_table(self.db_cursor, self.simid, self.schedule.steps,
+                             [x for x in self.schedule.agents if isinstance(x, Bank)])
+        insert_agtibloan_table(self.db_cursor, self.simid, self.schedule.steps,
+                               [x for x in self.schedule.agents if isinstance(x, Ibloan)])
 
         self.conn.commit()
         self.schedule.step()
