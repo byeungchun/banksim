@@ -117,12 +117,16 @@ class BankSim(Model):
             self.schedule.add(bank)
 
         for i in range(self.initial_saver):
-            saver = Saver(self.next_id(), self)
+            saver = Saver({'unique_id': self.next_id(), 'model': self, 'balance': 1, 'owns_account': False,
+                           'saver_solvent': True, 'saver_exit': False, 'withdraw_upperbound': 0.2,
+                           'exitprob_upperbound': 0.06})
             self.grid.place_agent(saver, random.choice(list(self.G.nodes)))
             self.schedule.add(saver)
 
         for i in range(self.initial_loan):
-            loan = Loan(self.next_id(), self, rfree=self.rfree)
+            loan = Loan({"unique_id": self.next_id(), "model": self, "rfree": self.rfree, "amount":1,
+                         "loan_solvent": True, "loan_approved": False, "loan_dumped": False, "loan_liquidated": False,
+                         "pdf_upper": 0.1, "rcvry_rate": 0.4, "firesale_upper": 0.1})
             bank_id = random.choice(list(self.G.nodes))
             loan.bank_id = bank_id
             self.grid.place_agent(loan, bank_id) # Evenly distributed
