@@ -3,7 +3,7 @@ Banksim
 
 'Basksim' is the banking simulation model based on An Agent-Based Model using Python MESA library[1].
 
-.. imange:: https://github.com/byeungchun/mesaabba/blob/master/mesaabba.jpg
+.. image:: https://github.com/byeungchun/mesaabba/blob/master/mesaabba.jpg
 
 Description
 ---------------
@@ -23,5 +23,8 @@ Using Banksim
 
 References
 ---------------
-[1] MESA: Agent-based modeling in Python 3+, https://github.com/projectmesa/mesa
+[1] `MESA`: Agent-based modeling in Python 3+ 
 [2] ABBA: Agent-Based Model of the Banking System, https://github.com/jchanlauimf/ABBA
+
+
+.. _`MESA` : https://github.com/projectmesa/mesa
