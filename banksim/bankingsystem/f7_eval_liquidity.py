@@ -14,7 +14,7 @@ def process_deposit_withdrawal(schedule):
     for solvent_bank in [x for x in schedule.agents if isinstance(x, Bank) and x.bank_solvent]:
         savers = [x for x in schedule.agents if isinstance(x, Saver) and x.pos == solvent_bank.pos and
                   x.saver_solvent and x.owns_account]
-        logging.debug('process_deposit_withdrawal- num savers: %d of bank %d',len(savers),solvent_bank.pos)
+        logging.debug('process_deposit_withdrawal- num savers: %d of bank %d', len(savers), solvent_bank.pos)
         for saver in savers:
             if random.random() < saver.withdraw_prob:
                 saver.bank_id = 9999
@@ -22,7 +22,7 @@ def process_deposit_withdrawal(schedule):
                 # TO DO: saver.saver_last_color = color
                 # TO DO: change color Red
                 solvent_bank.deposit_outflow = solvent_bank.deposit_outflow + saver.balance
-            #solvent_bank.deposit_outflow = sum([x.balance for x in self.schedule.agents if isinstance(x, Saver) and
+            # solvent_bank.deposit_outflow = sum([x.balance for x in self.schedule.agents if isinstance(x, Saver) and
             #                                    x.pos == solvent_bank.pos and x.bank_id == 9999])
 
 
@@ -61,8 +61,8 @@ def process_access_interbank_market(schedule, car, min_reserves_ratio, bank):
     liq_banks = [x for x in schedule.agents if isinstance(x, Bank) and x.capital_ratio >= car and
                  x.reserves_ratio > x.buffer_reserves_ratio * min_reserves_ratio]
     # for liq_bank in liq_banks:
-        # print('Remove this print after implementing below to do')
-        # TO DO: change colour to Green
+    # print('Remove this print after implementing below to do')
+    # TO DO: change colour to Green
     needed_reserves = min_reserves_ratio * bank.bank_deposits - bank.bank_reserves
     # TO DO: change colour to Yellow
     available_reserves = sum([x.bank_reserves - x.buffer_reserves_ratio * min_reserves_ratio * x.bank_deposits
@@ -77,7 +77,9 @@ def process_access_interbank_market(schedule, car, min_reserves_ratio, bank):
         liq_bank.ib_credits = liq_bank.ib_credits + liquidity_contribution
         liq_bank.calculate_reserve_ratio()
 
-        ibloan = Ibloan(schedule.model.next_id(), schedule.model, schedule.model.libor_rate)
+        ibloan = Ibloan({"unique_id": schedule.model.next_id(),
+                        "model": schedule.model,
+                        "libor_rate": schedule.model.libor_rate})
         ibloan.ib_creditor = liq_bank
         ibloan.ib_amount = liquidity_contribution
         ibloan.ib_debtor = bank
@@ -113,14 +115,13 @@ def process_evaluate_liquidity_needs(schedule, car, min_reserves_ratio, bankrupt
     # it could be the case that some banks attempting to find resources were not
     # able to find all the resources they needed
 
-    #for noliqcap_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent and
+    # for noliqcap_bank in [x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent and
     #                                                         0 < x.reserves_ratio < self.min_reserves_ratio and not x.bank_capitalized]:
-        #print('Remove this print after implementing below to do')
-        # TO DO: change colour to Yellow
+    # print('Remove this print after implementing below to do')
+    # TO DO: change colour to Yellow
 
 
 def main_evaluate_liquidity(schedule, car, min_reserves_ratio, bankrupt_liquidation):
-
     # the four procedures will cause some banks to have:
     #
     # excess reserves: bank-reserves > minimum-reserves
