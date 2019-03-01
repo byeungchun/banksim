@@ -23,8 +23,10 @@ Using Banksim
 
 References
 ---------------
-[1] `MESA`: Agent-based modeling in Python 3+ 
-[2] ABBA: Agent-Based Model of the Banking System, https://github.com/jchanlauimf/ABBA
+        [1] `MESA`_: Agent-based modeling in Python 3+
+        
+        [2] `ABBA`_: Agent-Based Model of the Banking System
 
 
 .. _`MESA` : https://github.com/projectmesa/mesa
+.. _`ABBA` : https://github.com/jchanlauimf/ABBA
