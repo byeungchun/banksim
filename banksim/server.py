@@ -34,6 +34,6 @@ model_params = {"max_steps": UserSettableParameter("slider", "Max steps", 20, 10
                 "initial_equity": UserSettableParameter("slider", "Initial Equity of Bank", 100, 100, 200,1),
                 "car": UserSettableParameter("slider", "Min capital adequacy ratio", 0.08, 0.01, 0.10, 0.01)}
 
-server = ModularServer(BankSim, [canvas_network, chart_element], "ABBA - Banking system simulation", model_params)
+server = ModularServer(BankSim, [canvas_network, chart_element], "Banking system simulator", model_params)
 
 server.port = 8521
