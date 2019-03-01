@@ -112,7 +112,8 @@ class BankSim(Model):
         logger.info('db initialization')
 
         for i in range(self.initial_bank):
-            bank = Bank(self.next_id(), self, rfree=self.rfree, car=self.car, equity=self.initial_equity)
+            bank = Bank({'unique_id': self.next_id(), 'model': self, 'equity': 100, 'rfree': self.rfree,
+                         'car': self.car, 'buffer_reserves_ratio': 1.5})
             self.grid.place_agent(bank, i)
             self.schedule.add(bank)
 
