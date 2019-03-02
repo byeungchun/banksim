@@ -42,6 +42,7 @@ class BankSim(Model):
     sqlite_db = config['SQLITEDB']['file']
     db_init_query = config['SQLITEDB']['init_query']
     simid = None #Simulation ID for SQLITEDB primary key
+    write_db = True
     max_steps = 200
     height = None
     width = None
@@ -85,7 +86,7 @@ class BankSim(Model):
 
 
     def __init__(self, height=20, width=20, initial_saver=10000, initial_loan=20000, initial_bank=10,
-                 rfree=0.01, car=0.08, min_reserves_ratio=0.03, initial_equity = 100, max_steps=200):
+                 rfree=0.01, car=0.08, min_reserves_ratio=0.03, initial_equity = 100, max_steps=200, write_db=True):
         super().__init__()
         self.height = height
         self.width = width
