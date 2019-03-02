@@ -30,6 +30,7 @@ def initialize_loan_book(schedule, car, min_reserves_ratio):
             # This is original script on netlogo. But it spends a lot of time to calculate
             #
             # while available_loans and rwa < bank.max_rwa and \
+            #
             #         interim_reserves_ratio > bank.buffer_reserves_ratio * self.min_reserves_ratio:
             #     loans = [x for x in self.schedule.agents if
             #              isinstance(x, Loan) and bank.pos == x.pos and not x.loan_approved]

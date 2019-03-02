@@ -27,7 +27,8 @@ def mesa_abba_network_portrayal(G):
 canvas_network = NetworkModule(mesa_abba_network_portrayal, 500, 600, library='sigma')
 chart_element = ChartModule([{"Label":"BankAsset","Color":"#AA0000"}])
 
-model_params = {"max_steps": UserSettableParameter("slider", "Max steps", 20, 10, 200, 1),
+model_params = {"write_db": UserSettableParameter("checkbox",'Write DB',value=True),
+                "max_steps": UserSettableParameter("slider", "Max steps", 20, 10, 200, 1),
                 "initial_saver": UserSettableParameter("slider", "# of Saver", 10000, 10000, 20000, 100),
                 "initial_bank": UserSettableParameter("slider", "# of Bank", 10, 10, 20, 1),
                 "initial_loan": UserSettableParameter("slider", "# of Loan", 20000, 10000, 30000,100),
