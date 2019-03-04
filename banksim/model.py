@@ -42,24 +42,13 @@ class BankSim(Model):
     sqlite_db = config['SQLITEDB']['file']
     db_init_query = config['SQLITEDB']['init_query']
     simid = None #Simulation ID for SQLITEDB primary key
-    write_db = True
     max_steps = 200
-    height = None
-    width = None
-    initial_saver = None
-    initial_loan = None
-    initial_bank = None
-    rfree = None  # risk free rate
-    car = None  # Capital Requirement
-    libor_rate = None
-    min_reserves_ratio = None
     conn = None # Sqlite connector
     db_cursor = None # Sqlite DB cursor
     lst_bank_ratio = list()
     lst_ibloan = list()
 
     def init_database(self):
-
         if os.path.isfile(self.sqlite_db):
             compression = zipfile.ZIP_DEFLATED
             with zipfile.ZipFile(self.sqlite_db + datetime.now().strftime('%Y%m%d%H%M') + '.zip', 'w') as zf:
@@ -69,38 +58,37 @@ class BankSim(Model):
                     raise Exception("SQLITE DB file compression error")
                 finally:
                     zf.close()
-                    zf = None
-                    os.remove(self.sqlite_db)
+        if self.is_write_db:
+            try:
+                conn = sqlite3.connect(self.sqlite_db)
+                db_cursor = conn.cursor()
+                fin = open(self.db_init_query, 'r')
+                db_cursor.executescript(fin.read())
+                conn.commit()
+            except:
+                raise Exception("SQLite DB init error")
+            finally:
+                db_cursor.close()
+                conn.close()
 
-        try:
-            conn = sqlite3.connect(self.sqlite_db)
-            db_cursor = conn.cursor()
-            fin = open(self.db_init_query, 'r')
-            db_cursor.executescript(fin.read())
-            conn.commit()
-        except:
-            raise Exception("SQLite DB init error")
-        finally:
-            db_cursor.close()
-            conn.close()
-
-
-    def __init__(self, height=20, width=20, initial_saver=10000, initial_loan=20000, initial_bank=10,
-                 rfree=0.01, car=0.08, min_reserves_ratio=0.03, initial_equity = 100, max_steps=200, write_db=True):
+    # def __init__(self, height=20, width=20, initial_saver=10000, initial_loan=20000, initial_bank=10,
+    #              rfree=0.01, car=0.08, min_reserves_ratio=0.03, initial_equity = 100, max_steps=200, write_db=True):
+    def __init__(self, **params):
         super().__init__()
-        self.height = height
-        self.width = width
-        self.max_steps = max_steps
-        self.initial_saver = initial_saver
-        self.initial_loan = initial_loan
-        self.initial_bank = initial_bank
-        self.rfree = rfree
-        self.reserve_rates = rfree / 2.0  # set reserve rates one half of risk free rate
-        self.libor_rate = rfree
+        self.height = 20
+        self.width = 20
+        self.is_write_db = params['write_db']
+        self.max_steps = params['max_steps']
+        self.initial_saver = params['initial_saver']
+        self.initial_loan = params['initial_loan']
+        self.initial_bank = params['initial_bank']
+        self.rfree = params['rfree']
+        self.reserve_rates = params['rfree'] / 2.0  # set reserve rates one half of risk free rate
+        self.libor_rate = params['rfree']
         self.bankrupt_liquidation = 1  # 1: it is fire sale of assets, 0: bank liquidates loans at face value
-        self.car = car
-        self.min_reserves_ratio = min_reserves_ratio
-        self.initial_equity = initial_equity
+        self.car = params['car']
+        self.min_reserves_ratio = params['min_reserves_ratio']
+        self.initial_equity = params['initial_equity']
         self.G = nx.empty_graph(self.initial_bank)
         self.grid = NetworkGrid(self.G)
         self.schedule = RandomActivation(self)
@@ -180,14 +168,15 @@ class BankSim(Model):
         main_write_bank_ratios(self.schedule, self.lst_bank_ratio, self.car, self.min_reserves_ratio)
         main_write_interbank_links(self.schedule, self.lst_ibloan)
 
-        # Insert agent variables of current step into SQLITEDB
-        insert_agtsaver_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x, Saver)])
-        insert_agtloan_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x, Loan)])
-        # It needs to log before the 2nd round effect begin because the function initializes
-        insert_agtbank_table(self.db_cursor, self.simid, self.schedule.steps,
-                             [x for x in self.schedule.agents if isinstance(x, Bank)])
-        insert_agtibloan_table(self.db_cursor, self.simid, self.schedule.steps,
-                               [x for x in self.schedule.agents if isinstance(x, Ibloan)])
+        if self.is_write_db:
+            # Insert agent variables of current step into SQLITEDB
+            insert_agtsaver_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x, Saver)])
+            insert_agtloan_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x, Loan)])
+            # It needs to log before the 2nd round effect begin because the function initializes
+            insert_agtbank_table(self.db_cursor, self.simid, self.schedule.steps,
+                                 [x for x in self.schedule.agents if isinstance(x, Bank)])
+            insert_agtibloan_table(self.db_cursor, self.simid, self.schedule.steps,
+                                   [x for x in self.schedule.agents if isinstance(x, Ibloan)])
 
         self.conn.commit()
         self.schedule.step()

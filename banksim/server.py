@@ -33,7 +33,10 @@ model_params = {"write_db": UserSettableParameter("checkbox",'Write DB',value=Tr
                 "initial_bank": UserSettableParameter("slider", "# of Bank", 10, 10, 20, 1),
                 "initial_loan": UserSettableParameter("slider", "# of Loan", 20000, 10000, 30000,100),
                 "initial_equity": UserSettableParameter("slider", "Initial Equity of Bank", 100, 100, 200,1),
-                "car": UserSettableParameter("slider", "Min capital adequacy ratio", 0.08, 0.01, 0.10, 0.01)}
+                "car": UserSettableParameter("number", "Minimum capital adequacy ratio", value=0.08),
+                "rfree": UserSettableParameter("number","Risk Free Rate", value=0.01),
+                "min_reserves_ratio": UserSettableParameter("number","Minimum Reserve Ratio", value=0.03)
+                }
 
 server = ModularServer(BankSim, [canvas_network, chart_element], "Banking system simulator", model_params)
 
