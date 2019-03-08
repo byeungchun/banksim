@@ -1,4 +1,9 @@
+import os
+import sqlite3
+import zipfile
+import configparser
 from datetime import datetime,timezone
+
 
 def insert_simulation_table(cursor, task):
     """
@@ -114,3 +119,31 @@ def insert_agtibloan_table(cursor, simid, numstep, ibloans):
         cursor.execute(sql, tuple(loan_vars))
 
     return cursor.lastrowid
+
+
+def init_database():
+    config = configparser.ConfigParser()
+    config.read('conf/config.ini')
+    sqlite_db = config['SQLITEDB']['file']
+    db_init_query = config['SQLITEDB']['init_query']
+    if os.path.isfile(sqlite_db):
+        compression = zipfile.ZIP_DEFLATED
+        with zipfile.ZipFile(sqlite_db + datetime.now().strftime('%Y%m%d%H%M') + '.zip', 'w') as zf:
+            try:
+                zf.write(sqlite_db, compress_type=compression)
+            except:
+                raise Exception("SQLITE DB file compression error")
+            finally:
+                zf.close()
+    try:
+        conn = sqlite3.connect(sqlite_db)
+        db_cursor = conn.cursor()
+        fin = open(db_init_query, 'r')
+        db_cursor.executescript(fin.read())
+        conn.commit()
+    except:
+        raise Exception("SQLite DB init error")
+    finally:
+        db_cursor.close()
+        conn.execute("VACUUM")
+        conn.close()
