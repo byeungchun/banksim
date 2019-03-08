@@ -3,16 +3,15 @@ from mesa.space import NetworkGrid
 from mesa.time import RandomActivation
 from mesa.datacollection import DataCollector
 from datetime import datetime, timezone
-import os, traceback, random, zipfile, zlib
+import traceback, random
 import sqlite3
 import networkx as nx
-
 import configparser
+
 from banksim.logger import get_logger
 from banksim.agent.saver import Saver
 from banksim.agent.bank import Bank
 from banksim.agent.loan import Loan
-from banksim.agent.ibloan import Ibloan
 from banksim.bankingsystem.f1_init_market import initialize_deposit_base
 from banksim.bankingsystem.f1_init_market import initialize_loan_book
 from banksim.bankingsystem.f2_eval_solvency import main_evaluate_solvency
@@ -26,8 +25,7 @@ from banksim.bankingsystem.f7_eval_liquidity import main_evaluate_liquidity
 from banksim.util.write_agent_activity import main_write_bank_ratios
 from banksim.util.write_agent_activity import convert_result2dataframe
 from banksim.util.write_agent_activity import main_write_interbank_links
-from banksim.util.write_sqlitedb import insert_simulation_table, insert_agtbank_table, insert_agtsaver_table, \
-    insert_agtloan_table, insert_agtibloan_table
+from banksim.util.write_sqlitedb import insert_simulation_table, insert_agtbank_table, init_database
 
 logger = get_logger("model")
 
@@ -37,10 +35,6 @@ def get_sum_totasset(model):
 
 
 class BankSim(Model):
-    config = configparser.ConfigParser()
-    config.read('conf/config.ini')
-    sqlite_db = config['SQLITEDB']['file']
-    db_init_query = config['SQLITEDB']['init_query']
     simid = None #Simulation ID for SQLITEDB primary key
     max_steps = 200
     conn = None # Sqlite connector
@@ -48,34 +42,14 @@ class BankSim(Model):
     lst_bank_ratio = list()
     lst_ibloan = list()
 
-    def init_database(self):
-        if os.path.isfile(self.sqlite_db):
-            compression = zipfile.ZIP_DEFLATED
-            with zipfile.ZipFile(self.sqlite_db + datetime.now().strftime('%Y%m%d%H%M') + '.zip', 'w') as zf:
-                try:
-                    zf.write(self.sqlite_db, compress_type=compression)
-                except:
-                    raise Exception("SQLITE DB file compression error")
-                finally:
-                    zf.close()
-        if self.is_write_db:
-            try:
-                conn = sqlite3.connect(self.sqlite_db)
-                db_cursor = conn.cursor()
-                fin = open(self.db_init_query, 'r')
-                db_cursor.executescript(fin.read())
-                conn.commit()
-            except:
-                raise Exception("SQLite DB init error")
-            finally:
-                db_cursor.close()
-                conn.execute("VACUUM")
-                conn.close()
-
     def __init__(self, **params):
         super().__init__()
+        config = configparser.ConfigParser()
+        config.read('conf/config.ini')
+        self.sqlite_db = config['SQLITEDB']['file']
         self.height = 20
         self.width = 20
+        self.is_init_db = params['init_db']
         self.is_write_db = params['write_db']
         self.max_steps = params['max_steps']
         self.initial_saver = params['initial_saver']
@@ -95,9 +69,9 @@ class BankSim(Model):
             "BankAsset": get_sum_totasset
         })
 
-
-        self.init_database()
-        logger.info('db initialization')
+        if self.is_init_db:
+            init_database()
+            logger.info('db initialization')
 
         for i in range(self.initial_bank):
             bank = Bank({'unique_id': self.next_id(), 'model': self, 'equity': 100, 'rfree': self.rfree,
@@ -129,10 +103,12 @@ class BankSim(Model):
 
     def step(self):
         if self.schedule.steps == 0:
-            self.conn = sqlite3.connect(self.sqlite_db)
-            self.db_cursor = self.conn.cursor()
-            self.simid = int(datetime.now().strftime('%Y%m%d%H%M%S'))
-            task = (self.simid, 'test', datetime.now(timezone.utc))
+            if self.is_write_db:
+                self.conn = sqlite3.connect(self.sqlite_db)
+                self.db_cursor = self.conn.cursor()
+            self.simid = int(datetime.now().strftime('%y%m%d%H%M%S%f')[:-3])
+            title = 'CAR {0:f}, Reserves Ratio {1:f}'.format(self.car, self.min_reserves_ratio)
+            task = (self.simid, title, datetime.now(timezone.utc))
             insert_simulation_table(self.db_cursor, task)
 
         if self.schedule.steps == self.max_steps:
@@ -169,15 +145,15 @@ class BankSim(Model):
 
         if self.is_write_db:
             # Insert agent variables of current step into SQLITEDB
-            #insert_agtsaver_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x, Saver)])
-            # insert_agtloan_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x, Loan)])
+            #insert_agtsaver_table(self.db_cursor, self.simid, self.schedule.steps,[x for x in self.schedule.agents if isinstance(x, Saver)])
+            #insert_agtloan_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x, Loan)])
             # # It needs to log before the 2nd round effect begin because the function initializes
             insert_agtbank_table(self.db_cursor, self.simid, self.schedule.steps,
                                  [x for x in self.schedule.agents if isinstance(x, Bank)])
             # insert_agtibloan_table(self.db_cursor, self.simid, self.schedule.steps,
             #                        [x for x in self.schedule.agents if isinstance(x, Ibloan)])
+            self.conn.commit()
 
-        self.conn.commit()
         self.schedule.step()
         self.datacollector.collect(self)
 
@@ -198,5 +174,6 @@ class BankSim(Model):
             if len([x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]) == 0:
                 logger.info("All banks are bankrupt!")
                 break
-        df_bank, df_ibloan = convert_result2dataframe(self.lst_bank_ratio, self.lst_ibloan)
-        return df_bank, df_ibloan
+        #df_bank, df_ibloan = convert_result2dataframe(self.lst_bank_ratio, self.lst_ibloan)
+        #return df_bank, df_ibloan
+        return True
