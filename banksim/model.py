@@ -1,44 +1,55 @@
-from mesa.visualization.ModularVisualization import ModularServer
-from mesa.visualization.modules import CanvasGrid, ChartModule, NetworkModule
-from mesa.visualization.UserParam import UserSettableParameter
+# coding: utf-8
 
+import itertools
+import concurrent.futures
+
+from banksim.logger import get_logger
 from banksim.model import BankSim
+from banksim.util.write_sqlitedb import init_database
+from banksim.agent.bank import Bank
+
+# To replicate the simulation result in this paper (ABBA: An Agent-Based Model of the Banking System - IMF)
+#
+#
+
+logger = get_logger("scenario")
+
+def exec_banksim_model(model_params):
+    model = BankSim(**model_params)
+    model.run_model(step_count=240)
+    return True
+
+def main():
+    model_params = {"init_db": False,
+                    "write_db": True,
+                    "max_steps": 240,
+                    "initial_saver": 10000,
+                    "initial_bank": 10,
+                    "initial_loan": 20000,
+                    "initial_equity": 100,
+                    "rfree": 0.01
+                    }
+
+    lst_capital_req = [0.04, 0.08, 0.12, 0.16]
+    lst_reserve_ratio = [0.03, 0.045, 0.06]
+    combination_car_res = list(itertools.product(lst_capital_req, lst_reserve_ratio))
+
+    init_database()
+
+    lst_model_params = list()
+    for x in combination_car_res:
+        model_params["car"] = x[0]
+        model_params["min_reserves_ratio"] = x[1]
+        lst_model_params.append(model_params.copy())
+
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        model_finish_cnt = 0
+        for res in executor.map(exec_banksim_model, lst_model_params):
+            if res:
+                model_finish_cnt = model_finish_cnt + 1
+                if model_finish_cnt % 10 == 0:
+                    logger.info('Number of completed scenario: %3d', model_finish_cnt)
 
 
-def mesa_abba_network_portrayal(G):
-    portrayal = dict()
-    portrayal['nodes'] = [{'id': node_id,
-                           'size': 3,
-                           'color': '#CC0000',
-                           'label': 'Bank{}'.format(node_id),
-                           }
-                          for node_id in G.node]
-
-    portrayal['edges'] = [{'id': edge_id,
-                           'source': source,
-                           'target': target,
-                           'color': '#000000',
-                           }
-                          for edge_id, (source, target) in enumerate(G.edges)]
-
-    return portrayal
-
-
-canvas_network = NetworkModule(mesa_abba_network_portrayal, 500, 600, library='sigma')
-chart_element = ChartModule([{"Label":"BankAsset","Color":"#AA0000"}])
-
-model_params = {"init_db": UserSettableParameter("checkbox",'Initialize DB',value=True),
-                "write_db": UserSettableParameter("checkbox",'Write DB',value=True),
-                "max_steps": UserSettableParameter("slider", "Max steps", 20, 10, 200, 1),
-                "initial_saver": UserSettableParameter("slider", "# of Saver", 10000, 10000, 20000, 100),
-                "initial_bank": UserSettableParameter("slider", "# of Bank", 10, 10, 20, 1),
-                "initial_loan": UserSettableParameter("slider", "# of Loan", 20000, 10000, 30000,100),
-                "initial_equity": UserSettableParameter("slider", "Initial Equity of Bank", 100, 100, 200,1),
-                "car": UserSettableParameter("number", "Minimum capital adequacy ratio", value=0.08),
-                "rfree": UserSettableParameter("number","Risk Free Rate", value=0.01),
-                "min_reserves_ratio": UserSettableParameter("number","Minimum Reserve Ratio", value=0.03)
-                }
-
-server = ModularServer(BankSim, [canvas_network, chart_element], "Banking system simulator", model_params)
-
-server.port = 8521
+if __name__ == "__main__":
+    main()
