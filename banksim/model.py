@@ -69,6 +69,7 @@ class BankSim(Model):
                 raise Exception("SQLite DB init error")
             finally:
                 db_cursor.close()
+                conn.execute("VACUUM")
                 conn.close()
 
     def __init__(self, **params):
@@ -168,13 +169,13 @@ class BankSim(Model):
 
         if self.is_write_db:
             # Insert agent variables of current step into SQLITEDB
-            insert_agtsaver_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x, Saver)])
-            insert_agtloan_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x, Loan)])
-            # It needs to log before the 2nd round effect begin because the function initializes
+            #insert_agtsaver_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x, Saver)])
+            # insert_agtloan_table(self.db_cursor, self.simid, self.schedule.steps, [x for x in self.schedule.agents if isinstance(x, Loan)])
+            # # It needs to log before the 2nd round effect begin because the function initializes
             insert_agtbank_table(self.db_cursor, self.simid, self.schedule.steps,
                                  [x for x in self.schedule.agents if isinstance(x, Bank)])
-            insert_agtibloan_table(self.db_cursor, self.simid, self.schedule.steps,
-                                   [x for x in self.schedule.agents if isinstance(x, Ibloan)])
+            # insert_agtibloan_table(self.db_cursor, self.simid, self.schedule.steps,
+            #                        [x for x in self.schedule.agents if isinstance(x, Ibloan)])
 
         self.conn.commit()
         self.schedule.step()
@@ -188,12 +189,12 @@ class BankSim(Model):
         """
         for i in range(step_count):
             if i % 10 == 0 or (i+1) == step_count:
-                print(" STEP{0:1d} - # of sovent bank: {1:2d}".format(i, len([x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent])))
+                logger.info(" STEP: %3d - # of sovent bank: %2d", i, len([x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]))
             try:
                 self.step()
             except:
                 error = traceback.format_exc()
-                logger.info(error)
+                logger.error(error)
             if len([x for x in self.schedule.agents if isinstance(x, Bank) and x.bank_solvent]) == 0:
                 logger.info("All banks are bankrupt!")
                 break
