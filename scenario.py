@@ -3,6 +3,7 @@
 from banksim.model import BankSim
 from banksim.agent.bank import Bank
 
+# To replicate ABBA model
 model_params = {"write_db": True,
                 "max_steps": 240,
                 "initial_saver": 10000,
