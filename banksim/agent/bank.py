@@ -12,7 +12,7 @@ class Bank(Agent):
         self.equity = params.get("equity")
         self.bank_deposits = 0
         self.bank_loans = 0
-        self.bank_reserves = 0
+        self.bank_reserves = 0 #equity + deposit
         self.rdeposits = params.get("rfree")  # assumes deposits are risk free
         self.bank_solvent = True
         self.defaulted_loans = 0
