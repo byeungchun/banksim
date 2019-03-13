@@ -61,4 +61,4 @@ def main(rep_count=1):
 
 
 if __name__ == "__main__":
-    main(rep_count=10)
+    main(rep_count=100)
