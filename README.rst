@@ -1,6 +1,9 @@
 Banksim 
 ============
 
+.. image:: https://travis-ci.org/byeungchun/banksim.svg?branch=master
+    :target: https://travis-ci.org/byeungchun/banksim
+
 'Basksim' is the banking simulation model based on An Agent-Based Model using Python MESA library[1].
 
 .. image:: https://github.com/byeungchun/mesaabba/blob/master/mesaabba.jpg
