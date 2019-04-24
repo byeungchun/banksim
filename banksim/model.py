@@ -49,8 +49,8 @@ class BankSim(Model):
         self.sqlite_db = config['SQLITEDB']['file']
         self.height = 20
         self.width = 20
-        self.is_init_db = params['init_db']
-        self.is_write_db = params['write_db']
+        self.is_init_db = False if params.get('write_db') is None else params.get('write_db')
+        self.is_write_db = False if params.get('write_db') is None else params.get('write_db')
         self.max_steps = params['max_steps']
         self.initial_saver = params['initial_saver']
         self.initial_loan = params['initial_loan']
