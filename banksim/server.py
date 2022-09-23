@@ -12,7 +12,7 @@ def mesa_abba_network_portrayal(G):
                            'color': '#CC0000',
                            'label': 'Bank{}'.format(node_id),
                            }
-                          for node_id in G.node]
+                          for node_id in G.nodes]
 
     portrayal['edges'] = [{'id': edge_id,
                            'source': source,
